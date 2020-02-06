@@ -384,17 +384,104 @@ Choose the `app-B-springboot` application in the Service menu and then click on 
 ![First traces in Jaeger UI](images/jaeger-jee-app-A.png)
 
 
+
 ## Create the Node.js application
 
 
+It is now time to create the Node.js application, once again using the Appsody command-line interface. Appsody supports both [Express](https://expressjs.com/) and [LoopBack](https://loopback.io/) frameworks and for this tutorial you will use the Express framework.
 
+Type the following command in the command-line interface:
 
-### debug with `appsody build`
+```sh
+mkdir nodejs-tracing
+cd nodejs-tracing
+appsody init incubator/nodejs-express
 ```
-docker run --rm  --name system-dev --network opentrace_network -p 9081:9080 -p 9444:9443 --env JAEGER_AGENT_HOST=jaeger --env JAEGER_REPORTER_LOG_SPANS=true --env JAEGER_SAMPLER_TYPE=const --env JAEGER_SAMPLER_PARAM=1 dev.local/system
+
+Take a moment to inspect the structure of the template application created by Appsody:
+
+```
+nodejs-tracing
+├── app.js
+├── package-lock.json
+├── package.json
+└── test
+    └── test.js
+
 ```
 
-docker run --rm  --name system-dev --network opentrace_network -p 9081:9080 -p 9444:9443 --env JAEGER_AGENT_HOST=jaeger --env JAEGER_REPORTER_LOG_SPANS=true --env JAEGER_SAMPLER_TYPE=const --env JAEGER_SAMPLER_PARAM=1 dev.local/a1-appsody-war
+
+### Assign a name to the application
+
+Since you want to easily identify this application while inspecting a tracing span, the first modification to the application is to change the application name inside the newly generated `package.json` file.
+
+Modify the line containing `"name": "nodejs-express-simple",` in `package.json` to this line instead:
+
+```json
+    "name": "app-c-nodejs",
+```
+
+### Enable OpenTracing using Jaeger client
+
+For this section, you will follow the instructions outlined in the [Jaeger documentation](https://github.com/jaegertracing/jaeger-client-node).
+
+Following the code sample in the instructions in that page, the first change is to include the `jaeger-client` package in your application.
+
+First include the [package dependency](https://www.npmjs.com/package/jaeger-client) in the `package.json` file, 
+
+```json
+  "dependencies": {
+    "jaeger-client": "^3.17.1"
+  },
+```
+
+Then insert this entire block of code to the top of the `app.js` file:
+
+```js
+var initTracerFromEnv = require('jaeger-client').initTracerFromEnv;
+var config = {
+  serviceName: 'app-C-nodejs',
+};
+var options = {
+  tags: {
+    'my-awesome-service.version': '1.1.2',
+  }
+};
+var tracer = initTracerFromEnv(config, options);
+```
+
+
+### Launch the application
+
+With all modifications in places, it is time for you to launch the application and validate that it is instrumented for tracing distributed transactions.
+
+Type the following command on a separate command-line window:
+
+```sh
+appsody run \
+   --docker-options="--env JAEGER_AGENT_HOST=jaeger --env JAEGER_AGENT_PORT=6832 --env JAEGER_REPORTER_LOG_SPANS=true --env JAEGER_SAMPLER_TYPE=const --env JAEGER_SAMPLER_PARAM=1" \
+    --network opentrace_network 
+```
+
+Once again, notice the `JAEGER_AGENT_HOST` parameter matching the name of the Jaeger all-in-one server launched in previous steps, as well as the usage of the `network` parameter to place the container in the same custom Docker network created at the beginning of the tutorial.
+
+You should see a message such as the one below indicating that the server is ready to accept requests:
+
+`[Container] App started on PORT 3000`
+
+Once you see the message, you should issue a few requests to the sample resource created along with the application.
+
+```
+curl -k http://localhost:3000
+```
+
+You can then launch the Jaeger UI in your browser of choice, by opening this URL:
+http://localhost:16686
+
+Choose the `app-B-springboot` application in the Service menu and then click on the "Search" button, which should display the transactions you initiated from the command-line:
+
+![Node.js traces in Jaeger UI](images/jaeger-app-C-nodejs-express.png)
+
 
 
 
