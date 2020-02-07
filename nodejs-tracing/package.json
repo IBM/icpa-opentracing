@@ -13,7 +13,10 @@
     "test": "mocha"
   },
   "dependencies": {
-    "jaeger-client": "^3.17.1"
+    "jaeger-client": "^3.17.1",
+    "opentracing": "latest",
+    "request-promise": "^4.2.0",
+    "uuid-random": "latest"
   },
   "devDependencies": {
     "chai": "^4.2.0",

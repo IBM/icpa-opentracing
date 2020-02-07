@@ -79,11 +79,34 @@ type: tutorial
 
 In this tutorial, ...
 
+![Tutorial progress](images/tutorial-overview.png)
+
+
 https://opentracing.io/
 
 https://opentelemetry.io/
 
 
+https://opentracing.io/docs/overview/spans/
+
+[The OpenTracing Semantic Specification](https://github.com/opentracing/specification/blob/master/specification.md)
+
+### Node.js
+
+[OpenTracing API doc](https://opentracing-javascript.surge.sh/)
+
+### Java
+
+
+[Eclipse MicroProfile](https://microprofile.io/)
+
+[MicroProfile OpenTracing](https://github.com/eclipse/microprofile-opentracing)
+
+[OpenTracing API Javadoc](https://javadoc.io/doc/io.opentracing/opentracing-api/latest/index.html)
+
+### SpringBoot
+
+[Java Spring Jaeger](https://github.com/opentracing-contrib/java-spring-jaeger)
 
 ## Prerequisites
 
@@ -111,16 +134,12 @@ With the prerequisites in place, you should be able to complete this tutorial in
 Following along to this tutorial, you will perform the following steps:
 
 1. Setup local development 
+1. Create the Node.js application
 1. Create the JEE application
 1. Create the Spring boot application
-1. Create the Node.js application
 1. Examining tracing results (local)
 1. Examining tracing results (OpenShift playground)
 1. Tear down
-
-At the end of the tutorial, you will have progressed from ...
-
-![Tutorial progress](images/appsody-opentracing.png)
 
 
 
@@ -148,6 +167,7 @@ Type the following starting command from a command-line terminal, observing the 
 
 ```sh
 docker run --name jaeger \
+  --rm \
   -e COLLECTOR_ZIPKIN_HTTP_PORT=9411 \
   -p 5775:5775/udp \
   -p 6831:6831/udp \
@@ -157,11 +177,275 @@ docker run --name jaeger \
   -p 14268:14268 \
   -p 9411:9411 \
   --network opentrace_network \
-  jaegertracing/all-in-one:1.6
+  jaegertracing/all-in-one:latest
 ```
 
 
-## Step 2. Create the JEE application
+## Step 2. Create the Node.js application
+
+It is now time to create the Node.js application, once again using the Appsody command-line interface. Appsody supports both [Express](https://expressjs.com/) and [LoopBack](https://loopback.io/) frameworks and for this tutorial you will use the Express framework.
+
+Type the following command in the command-line interface:
+
+```sh
+mkdir nodejs-tracing
+cd nodejs-tracing
+appsody init incubator/nodejs-express
+```
+
+Take a moment to inspect the structure of the template application created by Appsody:
+
+```
+nodejs-tracing
+├── app.js
+├── package-lock.json
+├── package.json
+└── test
+    └── test.js
+
+```
+
+
+### Assign a name to the application
+
+Since you want to easily identify this application while inspecting a tracing span, the first modification to the application is to change the application name inside the newly generated `package.json` file.
+
+Modify the line containing `"name": "nodejs-express-simple",` in `package.json` to this line instead:
+
+```json
+    "name": "app-a-nodejs",
+```
+
+### Enable OpenTracing using Jaeger client
+
+For this section, you will follow the instructions outlined in the [Jaeger documentation](https://github.com/jaegertracing/jaeger-client-node).
+
+Following the code sample in the instructions in that page, the first change is to include the `jaeger-client` package in your application.
+
+First include the [package dependency](https://www.npmjs.com/package/jaeger-client) in the `package.json` file, 
+
+```json
+  "dependencies": {
+    "jaeger-client": "^3.17.1"
+  },
+```
+
+Node.js does not automatically instrument RESTful calls for tracing, so you need to make a few changes to the `app.js` file:
+1. Insert a global initialization block for an OpenTracing tracer object
+2. Initiate a tracing span at the beginning of the request
+3.  and the tracing statements inside the handler for the RESTful request being traced.
+
+
+
+```js
+module.exports = (/*options*/) => {
+  // Use options.server to access http.Server. Example with socket.io:
+  //     const io = require('socket.io')(options.server)
+  const app = require('express')()
+
+  //
+  // Tutorial begin: OpenTracing initialization
+  //
+  var initTracerFromEnv = require('jaeger-client').initTracerFromEnv;
+  var config = {
+    serviceName: 'app-a-nodejs',
+  };
+  var options = {
+  };
+  var tracer = initTracerFromEnv(config, options);
+  //
+  // Tutorial end: OpenTracing initialization
+  //
+  
+  app.get('/', (req, res) => {
+    //
+    // Tutorial begin: OpenTracing new span
+    //
+    const span = tracer.startSpan('http_request');
+    //
+    // Tutorial end: OpenTracing new span
+    //
+
+    // Use req.log (a `pino` instance) to log JSON:
+    req.log.info({message: 'Hello from Appsody!'});
+    res.send('Hello from Appsody!');
+
+    //
+    // Tutorial begin: Send span information to Jaeger
+    //
+    span.log({'event': 'request_end'});
+    span.finish();
+    //
+    // Tutorial end: Send span information to Jaeger
+    //
+  });
+
+  return app;
+};
+```
+
+You can find more information about the `tracer` interface at the [OpenTracing API page](https://github.com/opentracing/opentracing-javascript/).
+
+
+### Launch the application
+
+With all modifications in places, it is time for you to launch the application and validate that it is instrumented for tracing distributed transactions.
+
+Type the following command on a separate command-line window:
+
+```sh
+appsody run \
+   --docker-options="--env JAEGER_AGENT_HOST=jaeger --env JAEGER_AGENT_PORT=6832 --env JAEGER_REPORTER_LOG_SPANS=true --env JAEGER_SAMPLER_TYPE=const --env JAEGER_SAMPLER_PARAM=1" \
+    --network opentrace_network 
+```
+
+Once again, notice the `JAEGER_AGENT_HOST` parameter matching the name of the Jaeger all-in-one server launched in previous steps, as well as the usage of the `network` parameter to place the container in the same custom Docker network created at the beginning of the tutorial.
+
+You should see a message such as the one below indicating that the server is ready to accept requests:
+
+`[Container] App started on PORT 3000`
+
+Once you see the message, you should issue a few requests to the sample resource created along with the application.
+
+```
+curl -k http://localhost:3000
+```
+
+You can then launch the Jaeger UI in your browser of choice, by opening this URL:
+http://localhost:16686
+
+Choose the `app-a-nodejs` application in the Service menu and then click on the "Find Traces" button, which should display the transactions you initiated from the command-line:
+
+![Node.js traces in Jaeger UI](images/jaeger-app-nodejs.png)
+
+
+
+## Step 2. Create the Spring Boot application
+
+It is now time to create the Spring Boot application, once again using the Appsody command-line interface. Type the following command in the command-line interface:
+
+```sh
+mkdir springboot-tracing
+cd springboot-tracing
+appsody init incubator/java-spring-boot2
+```
+
+Before starting making modifications to the application, take a moment to inspect the template application created by Appsody:
+
+```
+springboot-tracing
+├── mvnw
+├── mvnw.cmd
+├── pom.xml
+└── src
+    ├── main
+    │   ├── java
+    │   │   └── application
+    │   │       ├── LivenessEndpoint.java
+    │   │       └── Main.java
+    │   └── resources
+    │       ├── application.properties
+    │       └── public
+    │           └── index.html
+    └── test
+        └── java
+            └── application
+                └── MainTests.java
+```
+
+
+### Assign a name to the application
+
+Since you want to easily identify this application while inspecting a tracing span, the first modification to the application is to change the application name inside the newly generated `pom.xml` file.
+
+Modify the line containing `<artifactId>default-application</artifactId>` in `pom.xml` to this line instead:
+
+```xml
+    <artifactId>app-b-springboot</artifactId>
+```
+
+### Enable OpenTracing using Jaeger client
+
+For this section, you will follow the instructions outlined in the [https://github.com/opentracing-contrib/java-spring-jaeger
+The next modification is to enable OpenTracing within the Spring Boot runtime, which requires a couple of localized changes to the`pom.xml` file
+
+Insert the [Maven opentracing-spring-jaeger-cloud-starter dependency](https://mvnrepository.com/artifact/io.opentracing.contrib/opentracing-spring-jaeger-cloud-starter) inside the `<dependencies>` element of the `pom.xml` file:
+
+```xml
+    <dependency>
+        <groupId>io.opentracing.contrib</groupId>
+        <artifactId>opentracing-spring-cloud-starter</artifactId>
+        <version>0.4.0</version>
+    </dependency>
+
+    <dependency>
+        <groupId>io.opentracing</groupId>
+        <artifactId>opentracing-api</artifactId>
+        <version>0.33.0</version>
+    </dependency>
+
+    <dependency>
+        <groupId>io.jaegertracing</groupId>
+        <artifactId>jaeger-client</artifactId>
+        <version>1.1.0</version>
+    </dependency>
+```
+
+
+### Enable OpenTracing in the Spring Boot application
+
+```java
+import io.jaegertracing.Configuration;
+import io.jaegertracing.Configuration.ReporterConfiguration;
+import io.jaegertracing.Configuration.SamplerConfiguration;
+
+import org.springframework.context.annotation.Bean;
+```
+
+```java
+@Bean
+	public io.opentracing.Tracer initTracer() {
+	  SamplerConfiguration samplerConfig = new SamplerConfiguration().withType("const").withParam(1);
+	  ReporterConfiguration reporterConfig = ReporterConfiguration.fromEnv().withLogSpans(true);
+	  return Configuration.fromEnv("app-b-springboot").withSampler(samplerConfig).withReporter(reporterConfig).getTracer();
+	}
+```
+
+### Launch the application
+
+With the modification in place, it is time to launch the application and validate that it is instrumented for tracing distributed transactions.
+
+Type the following command on a separate command-line window:
+
+```sh
+appsody run \
+   --docker-options="--env JAEGER_AGENT_HOST=jaeger --env JAEGER_REPORTER_LOG_SPANS=true --env JAEGER_SAMPLER_TYPE=const --env JAEGER_SAMPLER_PARAM=1" \
+    --network opentrace_network 
+```
+
+Note the `JAEGER_AGENT_HOST` parameter matching the name of the Jaeger all-in-one server launched in previous steps, as well as the usage of the `network` parameter to place the container in the same custom Docker network created at the beginning of the tutorial.
+
+You should see a message such as the one below indicating that the server is ready to accept requests:
+
+`[Container] [INFO] [AUDIT   ] CWWKF0011I: The defaultServer server is ready to run a smarter planet.`
+
+Once you see the message, you should issue a few requests to the sample resource created along with the application. Any URL will be sufficient for now as the goal is to validate that the enablement is working before we move on to creating new endpoints.
+
+Enter the following command in a command-line terminal and repeat it a few times.
+
+```
+curl -k http://localhost:8080/actuator
+```
+
+Now return to Jaeger UI (hosted at http://localhost:16686) in your browser. You will need to refresh the browser screen to see the new service entry for the application (`app-b-springboot`).
+
+Choose the `app-b-springboot` application in the Service menu and then click on the "Find Traces" button again, which will display the transactions you initiated from the command-line:
+
+![Spring Boot traces in Jaeger UI](images/jaeger-app-springboot.png)
+
+
+
+## Step 4. Create the JEE application
 
 As mentioned in the steps section, you will create a JEE application and instrument it with tracing capabilities.
 
@@ -213,7 +497,7 @@ Since you want to easily identify this application while inspecting a tracing sp
 Modify the line containing `<artifactId>starter-app</artifactId>` in `pom.xml` to this line instead:
 
 ```xml
-    <artifactId>app-A-jee</artifactId>
+    <artifactId>app-c-jee</artifactId>
 ```
 
 ### Enable OpenTracing using Jaeger client
@@ -245,7 +529,7 @@ The next step is to add the OpenTracing feature to the Open Liberty server. Add 
 Replace the `webApplication` element in the `src/main/liberty/config/server.xml` file with this snippet:
 
 ```xml
-    <webApplication location="app-A-jee.war" contextRoot="/" >
+    <webApplication location="app-c-jee.war" contextRoot="/" >
         <classloader apiTypeVisibility="+third-party" />
     </webApplication>
 ```
@@ -260,13 +544,11 @@ Type the following command on a separate command-line window:
 
 ```sh
 appsody run \
-   -p 9444:9443 \
-   -p 9081:9080 \
    --docker-options="--env JAEGER_AGENT_HOST=jaeger --env JAEGER_REPORTER_LOG_SPANS=true --env JAEGER_SAMPLER_TYPE=const --env JAEGER_SAMPLER_PARAM=1" \
     --network opentrace_network 
 ```
 
-Note the `JAEGER_AGENT_HOST` parameter matching the name of the Jaeger all-in-one server launched in previous steps, as well as the usage of the `network` parameter to place the container in the same custom Docker network created at the beginning of the tutorial. You can inspect the other Jaeger configuration parameters at https://github.com/jaegertracing/jaeger-client-java/blob/master/jaeger-core/README.md
+Notice the `JAEGER_AGENT_HOST` parameter matching the name of the Jaeger all-in-one server launched in previous steps, as well as the usage of the `network` parameter to place the container in the same custom Docker network created at the beginning of the tutorial. You can inspect the other Jaeger configuration parameters at https://github.com/jaegertracing/jaeger-client-java/blob/master/jaeger-core/README.md
 
 
 You should see a message such as the one below indicating that the server is ready to accept requests:
@@ -276,224 +558,157 @@ You should see a message such as the one below indicating that the server is rea
 Once you see the message, you should issue a few requests to the sample resource created along with the application.
 
 ```
-curl -k https://localhost:9444/starter/resource
+curl -k http://localhost:9080/starter/resource
 ```
 
-You can then launch the Jaeger UI in your browser of choice, by opening this URL:
-http://localhost:16686
+Now return to Jaeger UI (hosted at http://localhost:16686) in your browser. You will need to refresh the browser screen to see the new service entry for the application (`app-c-jee`).
 
-Choose the `jee-app-A` application in the Service menu and then click on the "Search" button, which should display the transactions you initiated from the command-line:
+Choose the `app-c-jee` application in the Service menu and then click on the "Find Traces" button again, which should display the transactions you initiated from the command-line:
 
-![First traces in Jaeger UI](images/jaeger-jee-app-A.png)
-
+![Open Liberty application traces in Jaeger UI](images/jaeger-app-jee.png)
 
 
-## Step 3. Create the Spring Boot application
 
-It is now time to create the Spring Boot application, once again using the Appsody command-line interface. Type the following command in the command-line interface:
+## Distributed transactions spanning applications
 
-```sh
-mkdir springboot-tracing
-cd springboot-tracing
-appsody init incubator/java-spring-boot2
-```
+At this point in the tutorial you have the 3 applications running and enabled for sending their tracing information to the Jaeger all-in-one server, so it is time to make modifications to each of the applications to implement the topology depicted at the beginning of the tutorial.
 
-Before starting making modifications to the application, take a moment to inspect the template application created by Appsody:
 
-```
-springboot-tracing
-├── mvnw
-├── mvnw.cmd
-├── pom.xml
-└── src
-    ├── main
-    │   ├── java
-    │   │   └── application
-    │   │       ├── LivenessEndpoint.java
-    │   │       └── Main.java
-    │   └── resources
-    │       ├── application.properties
-    │       └── public
-    │           └── index.html
-    └── test
-        └── java
-            └── application
-                └── MainTests.java
+### Service endpoint in the Open Liberty application
+
+The default template for the Open Liberty application created by Appsody already contains a REST endpoint that can be used without modification, defined in the `./src/main/java/dev/appsody/starter/StarterResource.java` Java class:
+
+```java
+package dev.appsody.starter;
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+
+@Path("/resource")
+public class StarterResource {
+
+    @GET
+    public String getRequest() {
+        return "StarterResource response";
+    }
+}
 ```
 
 
-### Assign a name to the application
+### Create service endpoint in the Sprint Boot application
 
-Since you want to easily identify this application while inspecting a tracing span, the first modification to the application is to change the application name inside the newly generated `pom.xml` file.
+Create a new Java class named `StarterResource.java` in the `./src/main/java/application` folder of the Spring Boot application:
 
-Modify the line containing `<artifactId>default-application</artifactId>` in `pom.xml` to this line instead:
+```java
+package application;
 
-```xml
-    <artifactId>springboot-app-B</artifactId>
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class StarterResource {
+
+    @RequestMapping("/resource")
+    public String getRequest() {
+        return "StarterResource response";
+    }
+}
 ```
 
-### Enable OpenTracing using Jaeger client
+### Create the top-level service endpoint in the Node.js application
 
-For this section, you will follow the instructions outlined in the [https://github.com/opentracing-contrib/java-spring-jaeger
-The next modification is to enable OpenTracing within the Spring Boot runtime, which requires a couple of localized changes to the`pom.xml` file
-
-For ththe support of Jaeger as a tracing backend](https://github.com/opentracing-contrib/java-spring-jaeger).
-
-The first change is to include the [Jaeger Java client library](https://github.com/jaegertracing/jaeger-client-java) dependency in the final application. If you look at the Open Liberty documentation it will instruct you to create a new shared library available to all applications running inside the container, but that level of complexity is unnecessary in a microservice where there will be a single application inside that server.
-
-Insert the [Maven opentracing-spring-jaeger-cloud-starter dependency](https://mvnrepository.com/artifact/io.opentracing.contrib/opentracing-spring-jaeger-cloud-starter) inside the `<dependencies>` element of the `pom.xml` file:
-
-```xml
-    <dependency>
-        <groupId>io.opentracing.contrib</groupId>
-        <artifactId>opentracing-spring-jaeger-cloud-starter</artifactId>
-        <version>0.2.0</version>
-    </dependency>
-```
-
-
-### Launch the application
-
-With the modification in place, it is time to launch the application and validate that it is instrumented for tracing distributed transactions.
-
-Type the following command on a separate command-line window:
-
-```sh
-appsody run \
-   --docker-options="--env JAEGER_AGENT_HOST=jaeger --env JAEGER_REPORTER_LOG_SPANS=true --env JAEGER_SAMPLER_TYPE=const --env JAEGER_SAMPLER_PARAM=1" \
-    --network opentrace_network 
-```
-
-Note the `JAEGER_AGENT_HOST` parameter matching the name of the Jaeger all-in-one server launched in previous steps, as well as the usage of the `network` parameter to place the container in the same custom Docker network created at the beginning of the tutorial.
-
-You should see a message such as the one below indicating that the server is ready to accept requests:
-
-`[Container] [INFO] [AUDIT   ] CWWKF0011I: The defaultServer server is ready to run a smarter planet.`
-
-Once you see the message, you should issue a few requests to the sample resource created along with the application.
-
-```
-curl -k https://localhost:9444/starter/resource
-```
-
-You can then launch the Jaeger UI in your browser of choice, by opening this URL:
-http://localhost:16686
-
-Choose the `app-B-springboot` application in the Service menu and then click on the "Search" button, which should display the transactions you initiated from the command-line:
-
-![First traces in Jaeger UI](images/jaeger-jee-app-A.png)
-
-
-
-## Create the Node.js application
-
-
-It is now time to create the Node.js application, once again using the Appsody command-line interface. Appsody supports both [Express](https://expressjs.com/) and [LoopBack](https://loopback.io/) frameworks and for this tutorial you will use the Express framework.
-
-Type the following command in the command-line interface:
-
-```sh
-mkdir nodejs-tracing
-cd nodejs-tracing
-appsody init incubator/nodejs-express
-```
-
-Take a moment to inspect the structure of the template application created by Appsody:
-
-```
-nodejs-tracing
-├── app.js
-├── package-lock.json
-├── package.json
-└── test
-    └── test.js
-
-```
-
-
-### Assign a name to the application
-
-Since you want to easily identify this application while inspecting a tracing span, the first modification to the application is to change the application name inside the newly generated `package.json` file.
-
-Modify the line containing `"name": "nodejs-express-simple",` in `package.json` to this line instead:
-
-```json
-    "name": "app-c-nodejs",
-```
-
-### Enable OpenTracing using Jaeger client
-
-For this section, you will follow the instructions outlined in the [Jaeger documentation](https://github.com/jaegertracing/jaeger-client-node).
-
-Following the code sample in the instructions in that page, the first change is to include the `jaeger-client` package in your application.
-
-First include the [package dependency](https://www.npmjs.com/package/jaeger-client) in the `package.json` file, 
+Add the `request` package inside the `package.json` file:
 
 ```json
   "dependencies": {
-    "jaeger-client": "^3.17.1"
+    "jaeger-client": "^3.17.1",
+    "opentracing": "latest",
+    "request-promise": "^4.2.0",
+    "uuid-random": "latest"
   },
 ```
 
-Then insert this entire block of code to the top of the `app.js` file:
+https://github.com/yurishkuro/opentracing-tutorial
 
 ```js
-var initTracerFromEnv = require('jaeger-client').initTracerFromEnv;
-var config = {
-  serviceName: 'app-C-nodejs',
-};
-var options = {
-  tags: {
-    'my-awesome-service.version': '1.1.2',
-  }
-};
-var tracer = initTracerFromEnv(config, options);
+// resource.js
+// ===========
+
+const request = require('request-promise');
+const { Tags, FORMAT_HTTP_HEADERS } = require('opentracing');
+
+var serviceTransaction = function(serviceCUrl, servicePayload, parentSpan) {
+    const tracer = parentSpan.tracer();
+    const span = tracer.startSpan("service", {childOf: parentSpan.context()});
+    callService(serviceCUrl, servicePayload, span)
+        .then( data => {
+            span.setTag(Tags.HTTP_STATUS_CODE, 200)
+            span.finish();
+        })
+        .catch( err => {
+            console.log(err);
+            span.setTag(Tags.ERROR, true)
+            span.setTag(Tags.HTTP_STATUS_CODE, err.statusCode || 500);
+            span.finish();
+        });
+
+}
+
+async function callService(serviceCUrl, servicePayload, parentSpan) {
+    const tracer = parentSpan.tracer();
+    const url = serviceCUrl;
+    const body = servicePayload
+
+    const span = parentSpan;
+    const method = 'GET';
+    const headers = {};
+    span.setTag(Tags.HTTP_URL, serviceCUrl);
+    span.setTag(Tags.SPAN_KIND, Tags.SPAN_KIND_RPC_CLIENT);
+    tracer.inject(span, FORMAT_HTTP_HEADERS, headers);
+
+    var serviceCallOptions = {
+        uri: url,
+        json: true,
+        headers: headers,
+        body: servicePayload
+    };
+    try {
+        const data = await request(serviceCallOptions);
+        span.finish();
+        return data;
+    }
+    catch (e) {
+        span.finish();
+        throw e;
+    }
+
+}
+
+module.exports = serviceTransaction;
 ```
 
+### Jaeger queries
 
-### Launch the application
-
-With all modifications in places, it is time for you to launch the application and validate that it is instrumented for tracing distributed transactions.
-
-Type the following command on a separate command-line window:
-
-```sh
-appsody run \
-   --docker-options="--env JAEGER_AGENT_HOST=jaeger --env JAEGER_AGENT_PORT=6832 --env JAEGER_REPORTER_LOG_SPANS=true --env JAEGER_SAMPLER_TYPE=const --env JAEGER_SAMPLER_PARAM=1" \
-    --network opentrace_network 
-```
-
-Once again, notice the `JAEGER_AGENT_HOST` parameter matching the name of the Jaeger all-in-one server launched in previous steps, as well as the usage of the `network` parameter to place the container in the same custom Docker network created at the beginning of the tutorial.
-
-You should see a message such as the one below indicating that the server is ready to accept requests:
-
-`[Container] App started on PORT 3000`
-
-Once you see the message, you should issue a few requests to the sample resource created along with the application.
-
-```
-curl -k http://localhost:3000
-```
-
-You can then launch the Jaeger UI in your browser of choice, by opening this URL:
-http://localhost:16686
-
-Choose the `app-B-springboot` application in the Service menu and then click on the "Search" button, which should display the transactions you initiated from the command-line:
-
-![Node.js traces in Jaeger UI](images/jaeger-app-C-nodejs-express.png)
+![](/images/jaeger-ui-trace-query.png)
 
 
-
-
-## Examining tracing results
-
+![](/images/jaeger-ui-ab-request.png)
 
 
 ## All in OpenShift
 
 
 
-## Tear down
+
+## Tear down the environment
+
+
+1. Press Ctrl+C on each terminal running Appsody.
+2. Stop the Jaeger all-in-one server and delete the custom Docker network:
+   ```sh
+   docker stop jaeger
+   docker network delete opentrace_network
+    ```
 
 
 
@@ -515,12 +730,3 @@ If you attempt the version 1.1.0, the RESTful request also fail, but this time w
 
 In summary, be on the lookout for these types of error messages as you attempt to use more recent versions of the Jaeger client in your application.
 
-
-## Tear down the environment
-
-
-
-```sh
-docker stop jaeger
-docker network delete opentrace_network
-```

@@ -13,7 +13,7 @@
     </parent>
 
     <groupId>dev.appsody.starter.java-openliberty</groupId>
-    <artifactId>app-A-jee</artifactId>
+    <artifactId>app-c-jee</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>war</packaging>
 
