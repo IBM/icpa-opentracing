@@ -140,7 +140,7 @@
                 <executions>
                     <execution>
                         <phase>integration-test</phase>
-                        <id>it-exec</id>
+                        <id>default-cli</id>
                         <goals>
                             <goal>integration-test</goal>
                         </goals>
