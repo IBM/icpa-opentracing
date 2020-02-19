@@ -22,7 +22,7 @@ public class ServiceResource {
     private Tracer tracer;
 
     @RequestMapping(value = "/resource", method = RequestMethod.GET, produces = "application/json")
-    public String getRequest(@RequestBody Map<String, Object> quotePayload,
+    public String quoteItem(@RequestBody Map<String, Object> quotePayload,
             @RequestHeader MultiValueMap<String, String> httpHeaders) {
 
         Span parentSpan = tracer.activeSpan();

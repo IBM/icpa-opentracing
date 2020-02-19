@@ -77,6 +77,8 @@ tags:
 type: tutorial
 ---
 
+Observability with service meshes and Open Tracing
+
 In this tutorial, ...
 
 ![Tutorial progress](images/tutorial-overview.png)
@@ -137,7 +139,7 @@ Following along to this tutorial, you will perform the following steps:
 1. Create the Node.js application
 1. Create the JEE application
 1. Create the Spring boot application
-1. Examining tracing results (local)
+1. Create distributed transactions through application dependencies
 1. Examining tracing results (OpenShift playground)
 1. Tear down
 
@@ -180,6 +182,39 @@ docker run --name jaeger \
   jaegertracing/all-in-one:latest
 ```
 
+### Jaeger tracing options
+
+Create a file for the [Jaeger client properties](https://www.jaegertracing.io/docs/latest/client-features/) , named `jaeger.properties`:
+
+
+`jaeger.properties`
+```properties
+cat > jaeger.properties << EOF
+JAEGER_AGENT_HOST=jaeger-agent
+JAEGER_AGENT_PORT=6832
+JAEGER_REPORTER_LOG_SPANS=true
+JAEGER_SAMPLER_TYPE=const
+JAEGER_SAMPLER_PARAM=1
+EOF
+```
+
+Noting that the JAEGER_AGENT_HOST references the jaeger agent in the istio-system, but you could try this:
+
+https://stackoverflow.com/questions/37221483/service-located-in-another-namespace
+https://kubernetes.io/docs/concepts/services-networking/service/#externalname
+
+```yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: jaeger-agent
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: jaeger-agent.istio-system.svc.cluster.local
+  ports:
+  - port: 6832
+```
 
 ## Step 2. Create the Node.js application
 
@@ -308,7 +343,7 @@ You should see a message such as the one below indicating that the server is rea
 Once you see the message, you should issue a few requests to the sample resource created along with the application.
 
 ```
-curl -k http://localhost:3000
+curl http://localhost:3000
 ```
 
 You can then launch the Jaeger UI in your browser of choice, by opening this URL:
@@ -434,7 +469,7 @@ Once you see the message, you should issue a few requests to the sample resource
 Enter the following command in a command-line terminal and repeat it a few times.
 
 ```
-curl -k http://localhost:8080/actuator
+curl http://localhost:8080/actuator
 ```
 
 Now return to Jaeger UI (hosted at http://localhost:16686) in your browser. You will need to refresh the browser screen to see the new service entry for the application (`app-b-springboot`).
@@ -558,7 +593,7 @@ You should see a message such as the one below indicating that the server is rea
 Once you see the message, you should issue a few requests to the sample resource created along with the application.
 
 ```
-curl -k http://localhost:9080/starter/resource
+curl http://localhost:9080/starter/resource
 ```
 
 Now return to Jaeger UI (hosted at http://localhost:16686) in your browser. You will need to refresh the browser screen to see the new service entry for the application (`app-c-jee`).
@@ -569,7 +604,7 @@ Choose the `app-c-jee` application in the Service menu and then click on the "Fi
 
 
 
-## Distributed transactions spanning applications
+## Create distributed transactions through application dependencies
 
 At this point in the tutorial you have the 3 applications running and enabled for sending their tracing information to the Jaeger all-in-one server, so it is time to make modifications to each of the applications to implement the topology depicted at the beginning of the tutorial.
 
@@ -631,8 +666,8 @@ Add the `request` package inside the `package.json` file:
 https://github.com/yurishkuro/opentracing-tutorial
 
 ```js
-// resource.js
-// ===========
+// serviceBroker.js
+// ================
 
 const request = require('request-promise');
 const { Tags, FORMAT_HTTP_HEADERS } = require('opentracing');
@@ -695,7 +730,139 @@ module.exports = serviceTransaction;
 ![](/images/jaeger-ui-ab-request.png)
 
 
-## All in OpenShift
+## All in Cluster
+
+[Install Istio](https://istio.io/docs/setup/getting-started/)
+
+```
+mkdir icpa-opentracing
+cd icpa-opentracing
+curl -L https://istio.io/downloadIstio | sh -
+export PATH="$PATH:/Users/nastacio/workspace/icpa-opentracing/istio-1.4.4/bin"
+istioctl verify-install 
+cd is*
+istioctl manifest apply --set profile=demo
+```
+
+```
+istioctl manifest apply --set profile=demo
+- Applying manifest for component Base...
+✔ Finished applying manifest for component Base.
+- Applying manifest for component Tracing...
+- Applying manifest for component Citadel...
+- Applying manifest for component Policy...
+- Applying manifest for component Prometheus...
+- Applying manifest for component Kiali...
+- Applying manifest for component EgressGateway...
+- Applying manifest for component IngressGateway...
+- Applying manifest for component Pilot...
+- Applying manifest for component Galley...
+- Applying manifest for component Telemetry...
+- Applying manifest for component Injector...
+- Applying manifest for component Grafana...
+✔ Finished applying manifest for component Citadel.
+✔ Finished applying manifest for component Prometheus.
+✔ Finished applying manifest for component Kiali.
+✔ Finished applying manifest for component Galley.
+✔ Finished applying manifest for component Tracing.
+✔ Finished applying manifest for component Injector.
+✔ Finished applying manifest for component Policy.
+✔ Finished applying manifest for component Pilot.
+✔ Finished applying manifest for component EgressGateway.
+✔ Finished applying manifest for component IngressGateway.
+✔ Finished applying manifest for component Grafana.
+✔ Finished applying manifest for component Telemetry.
+```
+
+[Add Jaeger to Cluster](https://www.jaegertracing.io/docs/latest/operator/)
+
+```sh
+cat <<EOF | kubectl apply -f -
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: simplest
+EOF
+```
+
+```
+kubectl get deployment nodejs-tracing  -o yaml | ./istioctl kube-inject -f - | kubectl apply -f -
+```
+
+Expose the JaegerUI for local access:
+```
+kubectl expose service simplest-query --type=LoadBalancer  --name=jaeger-ui
+```
+
+```
+http://localhost:16686
+```
+
+Expose Jager 
+```
+cd nodejs-tracing 
+appsody deploy
+```
+
+[Create a ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#create-a-configmap) with the Jaeger configuration settings added to `jaeger.properties` earier in this tutorial:
+
+
+```sh
+kubectl create configmap jaeger-config --from-env-file=../jaeger.properties
+kubectl get configmap jaeger-config -o yaml
+```
+
+```
+kubectl label namespace default istio-injection=enabled
+kubectl get namespace -L istio-injection
+```
+
+```
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: tracing-tutorial-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: tracing-tutorialinfo
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - tracing-tutorial-gateway
+  http:
+  - match:
+    - uri:
+        exact: /node-springboot
+    - uri:
+        prefix: /node-jee
+    route:
+    - destination:
+        host: nodejs-tracing
+        port:
+          number: 3000
+EOF
+```
+
+```sh
+default
+[Error] Failed to get deployment hostname and port: Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services "nodejs-tracing" not found
+[Error] Failed to find deployed service IP and Port: Failed to find deployed service IP and Port: kubectl get failed: exit status 1: Error from server (NotFound): services "nodejs-tracing" not found
+```
+
 
 
 

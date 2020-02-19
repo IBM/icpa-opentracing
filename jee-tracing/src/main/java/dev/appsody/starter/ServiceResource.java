@@ -12,8 +12,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
-import org.eclipse.microprofile.opentracing.Traced;
-
 import io.opentracing.Scope;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
@@ -21,24 +19,20 @@ import io.opentracing.tag.Tags;
 @Path("/service")
 public class ServiceResource {
 
-    @Context
-    HttpHeaders httpHeaders;
-
     @Inject
     Tracer tracer;
 
     @GET
-    @Traced(value = true, operationName = "app-c.completer_order")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getRequest(JsonObject orderPayload) {
+    public Response completeOrder(JsonObject orderPayload, @Context HttpHeaders httpHeaders) {
         try (Scope childScope = tracer.buildSpan("phase_1").startActive(true)) {
             MultivaluedMap<String, String> requestHeaders = httpHeaders.getRequestHeaders();
             requestHeaders.forEach((k, v) -> System.out.println(k + ":" + v.toString()));
-            orderPayload.forEach((k, v) -> System.out.println(k + ":" + v.toString()));
+            orderPayload.toString();
         }
 
         try (Scope childScope = tracer.buildSpan("phase_2").startActive(true)) {
-            int orderTotal = orderPayload.getInt("total");
+            double orderTotal = orderPayload.getJsonNumber("total").doubleValue();
             if (orderTotal > 6000) {
                 childScope.span().setTag(Tags.ERROR.getKey(), true);
                 childScope.span().log("Order value " + orderTotal + " is too high");

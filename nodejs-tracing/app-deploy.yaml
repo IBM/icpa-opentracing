@@ -1,0 +1,61 @@
+apiVersion: appsody.dev/v1beta1
+kind: AppsodyApplication
+metadata:
+  annotations:
+    commit.image.appsody.dev/author: Denilson Nastacio <dnastaci@us.ibm.com>
+    commit.image.appsody.dev/committer: Denilson Nastacio <dnastaci@us.ibm.com>
+    commit.image.appsody.dev/contextDir: /nodejs-tracing
+    commit.image.appsody.dev/date: Fri Feb 7 17:22:33 2020 -0500
+    commit.image.appsody.dev/message: Interim draft with working applications
+    image.opencontainers.org/created: "2020-02-15T22:54:38-05:00"
+    image.opencontainers.org/documentation: https://github.com/IBM/icpa-opentracing
+    image.opencontainers.org/revision: 4b5c3c2807f5085ff9bed08b001daffe8d939530-modified
+    image.opencontainers.org/source: https://github.com/IBM/icpa-opentracing/tree/initial-draft
+    image.opencontainers.org/url: https://github.com/IBM/icpa-opentracing
+    stack.appsody.dev/authors: Sam Roberts <vieuxtech@gmail.com>
+    stack.appsody.dev/configured: docker.io/appsody/nodejs-express:0.4
+    stack.appsody.dev/created: "2020-02-07T15:21:54Z"
+    stack.appsody.dev/description: Express web framework for Node.js
+    stack.appsody.dev/licenses: Apache-2.0
+    stack.appsody.dev/tag: docker.io/appsody/nodejs-express:0.4.2
+    stack.appsody.dev/title: Node.js Express
+  creationTimestamp: null
+  labels:
+    image.opencontainers.org/title: nodejs-tracing
+    stack.appsody.dev/id: nodejs-express
+    stack.appsody.dev/version: 0.4.2
+  name: nodejs-tracing
+  namespace: default
+spec:
+  applicationImage: dev.local/nodejs-tracing
+  createKnativeService: false
+  envFrom:
+  - configMapRef:
+      name: jaeger-config
+  expose: true
+  livenessProbe:
+    failureThreshold: 12
+    httpGet:
+      path: /live
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 2
+  monitoring:
+    labels:
+      k8s-app: nodejs-tracing
+  readinessProbe:
+    failureThreshold: 12
+    httpGet:
+      path: /ready
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 2
+    timeoutSeconds: 1
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+    port: 3000
+    type: NodePort
+  stack: nodejs-express
+  version: 1.0.0
+status: {}

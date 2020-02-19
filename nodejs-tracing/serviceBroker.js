@@ -1,5 +1,5 @@
-// resource.js
-// ===========
+// serviceBroker.js
+// ================
 
 const request = require('request-promise');
 const { Tags, FORMAT_HTTP_HEADERS } = require('opentracing');
