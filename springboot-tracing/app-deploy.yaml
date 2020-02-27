@@ -1,0 +1,75 @@
+apiVersion: appsody.dev/v1beta1
+kind: AppsodyApplication
+metadata:
+  annotations:
+    commit.image.appsody.dev/author: Denilson Nastacio <dnastaci@us.ibm.com>
+    commit.image.appsody.dev/committer: Denilson Nastacio <dnastaci@us.ibm.com>
+    commit.image.appsody.dev/contextDir: /springboot-tracing
+    commit.image.appsody.dev/date: Wed Feb 19 11:24:05 2020 -0500
+    commit.image.appsody.dev/message: Integration with Jaeger in Istio
+    commit.stack.appsody.dev/author: Harish Yayi <yharish991@gmail.com>
+    commit.stack.appsody.dev/committer: GitHub <noreply@github.com>
+    commit.stack.appsody.dev/contextDir: /incubator/java-spring-boot2
+    commit.stack.appsody.dev/date: Fri Feb 21 16:00:55 2020 +0000
+    commit.stack.appsody.dev/message: java-spring-boot2 - add additional stack maintainers
+      to the stack (#681)
+    image.opencontainers.org/created: "2020-02-24T16:51:14-05:00"
+    image.opencontainers.org/documentation: https://github.com/IBM/icpa-opentracing
+    image.opencontainers.org/revision: 05039a90e7d531bf15bf7c96ff1678fc84463618-modified
+    image.opencontainers.org/source: https://github.com/IBM/icpa-opentracing/tree/initial-draft
+    image.opencontainers.org/url: https://github.com/IBM/icpa-opentracing
+    sidecar.istio.io/inject: "true"
+    stack.appsody.dev/authors: Erin Schnabel <schnabel@us.ibm.com>, Ozzy Osborne <ozzy@ca.ibm.com>,
+      Richard Trotter <rtrotter@us.ibm.com>, Harish Yayi <hyayi@us.ibm.com>
+    stack.appsody.dev/configured: docker.io/appsody/java-spring-boot2:0.3
+    stack.appsody.dev/created: "2020-02-21T16:05:31Z"
+    stack.appsody.dev/description: Spring Boot using OpenJ9 and Maven
+    stack.appsody.dev/documentation: https://github.com/appsody/stacks/tree/master/incubator/java-spring-boot2/README.md
+    stack.appsody.dev/licenses: Apache-2.0
+    stack.appsody.dev/revision: 04f9230fac0d9add6c367c10e9908192fedcd7cc
+    stack.appsody.dev/source: https://github.com/appsody/stacks/tree/master/incubator/java-spring-boot2/image
+    stack.appsody.dev/tag: docker.io/appsody/java-spring-boot2:0.3.26
+    stack.appsody.dev/title: Spring Boot®
+    stack.appsody.dev/url: https://github.com/appsody/stacks/tree/master/incubator/java-spring-boot2
+  creationTimestamp: null
+  labels:
+    image.opencontainers.org/title: springboot-tracing
+    stack.appsody.dev/id: java-spring-boot2
+    stack.appsody.dev/version: 0.3.26
+  name: springboot-tracing
+spec:
+  applicationImage: dnastacio/springboot-tracing
+  createKnativeService: false
+  envFrom:
+  - configMapRef:
+      name: jaeger-config
+  expose: true
+  livenessProbe:
+    failureThreshold: 12
+    httpGet:
+      path: /actuator/liveness
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 2
+  monitoring:
+    endpoints:
+    - path: /actuator/prometheus
+    labels:
+      k8s-app: springboot-tracing
+  readinessProbe:
+    failureThreshold: 12
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 2
+    timeoutSeconds: 1
+  service:
+    annotations:
+      prometheus.io/path: /actuator/prometheus
+      prometheus.io/scrape: "true"
+    port: 8080
+    type: ClusterIP
+  stack: java-spring-boot2
+  version: 1.0.0
+status: {}

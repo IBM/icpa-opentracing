@@ -1,0 +1,96 @@
+apiVersion: appsody.dev/v1beta1
+kind: AppsodyApplication
+metadata:
+  annotations:
+    architecture: x86_64
+    authoritative-source-url: registry.access.redhat.com
+    build-date: 2019-10-29T16:44:53.794580
+    commit.image.appsody.dev/author: Denilson Nastacio <dnastaci@us.ibm.com>
+    commit.image.appsody.dev/committer: Denilson Nastacio <dnastaci@us.ibm.com>
+    commit.image.appsody.dev/contextDir: /jee-tracing
+    commit.image.appsody.dev/date: Wed Feb 19 11:24:05 2020 -0500
+    commit.image.appsody.dev/message: Integration with Jaeger in Istio
+    commit.stack.appsody.dev/author: Scott Kurz <skurz@us.ibm.com>
+    commit.stack.appsody.dev/committer: GitHub <noreply@github.com>
+    commit.stack.appsody.dev/contextDir: /incubator/java-openliberty
+    commit.stack.appsody.dev/date: Mon Feb 24 15:33:55 2020 +0000
+    commit.stack.appsody.dev/message: Perform mvn install as java_user (#686)
+    description: The Universal Base Image is designed and engineered to be the base
+      layer for all of your containerized applications, middleware and utilities.
+      This base image is freely redistributable, but Red Hat only supports Red Hat
+      technologies through subscriptions for Red Hat products. This image is maintained
+      by Red Hat and updated regularly.
+    distribution-scope: public
+    image.opencontainers.org/created: "2020-02-24T14:53:40-05:00"
+    image.opencontainers.org/documentation: https://github.com/IBM/icpa-opentracing
+    image.opencontainers.org/revision: 05039a90e7d531bf15bf7c96ff1678fc84463618-modified
+    image.opencontainers.org/source: https://github.com/IBM/icpa-opentracing/tree/initial-draft
+    image.opencontainers.org/url: https://github.com/IBM/icpa-opentracing
+    k8s.io/description: The Universal Base Image is designed and engineered to be
+      the base layer for all of your containerized applications, middleware and utilities.
+      This base image is freely redistributable, but Red Hat only supports Red Hat
+      technologies through subscriptions for Red Hat products. This image is maintained
+      by Red Hat and updated regularly.
+    k8s.io/display-name: Red Hat Universal Base Image 8
+    maintainer: Red Hat, Inc.
+    name: ubi8
+    openshift.io/expose-services: ""
+    openshift.io/tags: base rhel8
+    redhat.com/build-host: cpt-1002.osbs.prod.upshift.rdu2.redhat.com
+    redhat.com/component: ubi8-container
+    redhat.com/license_terms: https://www.redhat.com/en/about/red-hat-end-user-license-agreements#UBI
+    release: "277"
+    stack.appsody.dev/authors: Mike Andrasak <andrasak@us.ibm.com>, Andy Mauer <ajmauer@us.ibm.com>,
+      Scott Kurz <skurz@us.ibm.com>, Adam Wisniewski <awisniew@us.ibm.com>
+    stack.appsody.dev/configured: docker.io/appsody/java-openliberty:0.2
+    stack.appsody.dev/created: "2020-02-24T15:35:57Z"
+    stack.appsody.dev/description: Open Liberty & OpenJ9 using Maven
+    stack.appsody.dev/documentation: https://github.com/appsody/stacks/tree/master/incubator/java-openliberty/README.md
+    stack.appsody.dev/licenses: Apache-2.0
+    stack.appsody.dev/revision: 6ceac5fc3b5421cba0ca7b6a52db3e7008ff15f6
+    stack.appsody.dev/source: https://github.com/appsody/stacks/tree/master/incubator/java-openliberty/image
+    stack.appsody.dev/tag: docker.io/appsody/java-openliberty:0.2.2
+    stack.appsody.dev/title: Open Liberty
+    stack.appsody.dev/url: https://github.com/appsody/stacks/tree/master/incubator/java-openliberty
+    summary: Provides the latest release of Red Hat Universal Base Image 8.
+    url: https://access.redhat.com/containers/#/registry.access.redhat.com/ubi8/images/8.1-277
+    vcs-ref: c42933bcdbf9f1c232e981a5e40de257c3534c8e
+    vcs-type: git
+    vendor: Red Hat, Inc.
+    version: "8.1"
+  creationTimestamp: null
+  labels:
+    image.opencontainers.org/title: jee-tracing
+    stack.appsody.dev/id: java-openliberty
+    stack.appsody.dev/version: 0.2.2
+  name: jee-tracing
+spec:
+  applicationImage: dev.local/jee-tracing
+  createKnativeService: false
+  envFrom:
+  - configMapRef:
+      name: jaeger-config
+  expose: true
+  livenessProbe:
+    failureThreshold: 12
+    httpGet:
+      path: /health/live
+      port: 9080
+    initialDelaySeconds: 5
+    periodSeconds: 2
+  readinessProbe:
+    failureThreshold: 12
+    httpGet:
+      path: /health/ready
+      port: 9080
+    initialDelaySeconds: 5
+    periodSeconds: 2
+    timeoutSeconds: 1
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+    port: 9080
+    type: ClusterIP
+  stack: java-openliberty
+  version: 1.0.0
+status: {}

@@ -7,7 +7,7 @@ const { Tags, FORMAT_HTTP_HEADERS } = require('opentracing');
 var serviceTransaction = function(serviceCUrl, servicePayload, parentSpan) {
     const tracer = parentSpan.tracer();
     const span = tracer.startSpan("service", {childOf: parentSpan.context()});
-    callService(serviceCUrl, servicePayload, span)
+    var callResult = callService(serviceCUrl, servicePayload, span)
         .then( data => {
             span.setTag(Tags.HTTP_STATUS_CODE, 200)
             span.finish();
@@ -18,7 +18,7 @@ var serviceTransaction = function(serviceCUrl, servicePayload, parentSpan) {
             span.setTag(Tags.HTTP_STATUS_CODE, err.statusCode || 500);
             span.finish();
         });
-
+    return callResult;
 }
 
 async function callService(serviceCUrl, servicePayload, parentSpan) {
@@ -31,6 +31,7 @@ async function callService(serviceCUrl, servicePayload, parentSpan) {
     const headers = {};
     span.setTag(Tags.HTTP_URL, serviceCUrl);
     span.setTag(Tags.SPAN_KIND, Tags.SPAN_KIND_RPC_CLIENT);
+    span.setBaggageItem("baggage", true);
     tracer.inject(span, FORMAT_HTTP_HEADERS, headers);
 
     var serviceCallOptions = {

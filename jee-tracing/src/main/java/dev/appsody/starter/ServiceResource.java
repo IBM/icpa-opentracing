@@ -28,7 +28,8 @@ public class ServiceResource {
         try (Scope childScope = tracer.buildSpan("phase_1").startActive(true)) {
             MultivaluedMap<String, String> requestHeaders = httpHeaders.getRequestHeaders();
             requestHeaders.forEach((k, v) -> System.out.println(k + ":" + v.toString()));
-            orderPayload.toString();
+            System.out.println(orderPayload);
+            System.out.println("baggage item: " + tracer.activeSpan().getBaggageItem("baggage"));
         }
 
         try (Scope childScope = tracer.buildSpan("phase_2").startActive(true)) {
@@ -37,6 +38,7 @@ public class ServiceResource {
                 childScope.span().setTag(Tags.ERROR.getKey(), true);
                 childScope.span().log("Order value " + orderTotal + " is too high");
             }
+            // Simulation of long stretch of work
             Thread.sleep(60);
         } catch (InterruptedException e) {
             // no-op

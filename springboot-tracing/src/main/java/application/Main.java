@@ -1,25 +1,34 @@
 package application;
 
-import io.jaegertracing.Configuration;
-import io.jaegertracing.Configuration.ReporterConfiguration;
-import io.jaegertracing.Configuration.SamplerConfiguration;
-
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+// 
+// Tutorial: Begin import statements for Jaeger and OpenTracing
+//
 import org.springframework.context.annotation.Bean;
+import io.jaegertracing.Configuration;
+import io.opentracing.Tracer;
+// 
+// Tutorial: End import statements for Jaeger and OpenTracing
+//
 
 @SpringBootApplication
 public class Main {
 
-	@Bean
-	public io.opentracing.Tracer initTracer() {
-	  SamplerConfiguration samplerConfig = new SamplerConfiguration().withType("const").withParam(1);
-	  ReporterConfiguration reporterConfig = ReporterConfiguration.fromEnv().withLogSpans(true);
-	  return Configuration.fromEnv("app-b-springboot").withSampler(samplerConfig).withReporter(reporterConfig).getTracer();
-	}
+        // 
+        // Tutorial: Begin initialization of OpenTracing tracer
+        //
+        @Bean
+        public Tracer initTracer() {
+          return Configuration.fromEnv("app-b-springboot").getTracer();
+        }
+        // 
+        // Tutorial: End initialization of OpenTracing tracer
+        //
 
-	public static void main(String[] args) {
-		SpringApplication.run(Main.class, args);
-	}
+        public static void main(String[] args) {
+                SpringApplication.run(Main.class, args);
+        }
 
 }
