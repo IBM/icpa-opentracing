@@ -1,0 +1,2 @@
+project-name: nodejs-tracing
+stack: docker.io/appsody/nodejs-express:0.4
