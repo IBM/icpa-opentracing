@@ -6,7 +6,6 @@ module.exports = (/*options*/) => {
   //
   // Tutorial begin: Remote requests to other applications
   //
-  const request = require('request')
   const uuid = require('uuid-random')
   const serviceTransaction = require('./serviceBroker.js')
   //

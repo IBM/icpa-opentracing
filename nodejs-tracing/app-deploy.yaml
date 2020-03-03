@@ -5,11 +5,11 @@ metadata:
     commit.image.appsody.dev/author: Denilson Nastacio <dnastaci@us.ibm.com>
     commit.image.appsody.dev/committer: Denilson Nastacio <dnastaci@us.ibm.com>
     commit.image.appsody.dev/contextDir: /nodejs-tracing
-    commit.image.appsody.dev/date: Wed Feb 19 11:24:05 2020 -0500
-    commit.image.appsody.dev/message: Integration with Jaeger in Istio
-    image.opencontainers.org/created: "2020-02-24T15:04:21-05:00"
+    commit.image.appsody.dev/date: Thu Feb 27 10:34:55 2020 -0500
+    commit.image.appsody.dev/message: Close to final draft for Jaeger-only portion
+    image.opencontainers.org/created: "2020-02-28T11:24:26-05:00"
     image.opencontainers.org/documentation: https://github.com/IBM/icpa-opentracing
-    image.opencontainers.org/revision: 05039a90e7d531bf15bf7c96ff1678fc84463618-modified
+    image.opencontainers.org/revision: a28611521232409fd9fe60aadc15c54a1fc18078-modified
     image.opencontainers.org/source: https://github.com/IBM/icpa-opentracing/tree/initial-draft
     image.opencontainers.org/url: https://github.com/IBM/icpa-opentracing
     stack.appsody.dev/authors: Sam Roberts <vieuxtech@gmail.com>
@@ -53,6 +53,7 @@ spec:
     timeoutSeconds: 1
   service:
     annotations:
+      sidecar.istio.io/inject: "true"
       prometheus.io/scrape: "true"
     port: 3000
     type: NodePort
