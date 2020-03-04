@@ -88,7 +88,7 @@ tags:
 type: tutorial
 ---
 
-This is the first on a two-part tutorial, where you will build a small system containing various interconnected microservices and study the traffic inside that system. 
+This is the first of a two-part tutorial, where you will build a small system containing various interconnected microservices and study the traffic inside that system. 
 
 The first part focus on instrumenting the application for sending its traffic to a central location and then studying the results in a dashboard. The second part focus on the deployment of the resulting services to a Kubernetes cluster augmented with a service mesh, then exploring all the benefits of distributed tracing in a potential production environment. 
 
@@ -96,7 +96,7 @@ Traffic analysis is an essential activity in determining the ideal partitioning 
 
 This tutorial is meant for developers who are familiar with [Appsody](https://developer.ibm.com/blogs/introduction-to-appsody/) and with the concept of distributed tracing using [OpenTracing](https://opentracing.io/) APIs and the popular [Jaeger client libraries](https://www.jaegertracing.io/docs/latest/client-libraries/).
 
-Appsody  is one of the upstream open source projects included in [IBM Cloud Pak for Applications] (https://www.ibm.com/cloud/cloud-pak-for-applications) and is used in this tutorial both as a way to expedite the creation of the microservices and also as a solution for introducimg instrumentation consistently across new applications.
+Appsody  is one of the upstream open source projects included in [IBM Cloud Pak for Applications] (https://www.ibm.com/cloud/cloud-pak-for-applications) and is used in this tutorial to expedite the creation and testing of the microservices you are about to create.
 
 At the end of the tutorial, you will have progressed through creating multiple microservices, instrumenting them for sending their telementry to a [Jaeger](https://www.jaegertracing.io) backend (distributed tracing server) and studying the results in the Jaeger UI:
 
@@ -182,7 +182,7 @@ Following along to this tutorial, you will perform the following steps:
 
 ## Step 1. Setup local development environment
 
-You will start with a local [all-in-one Jaeger server](https://www.jaegertracing.io/docs/1.6/getting-started/) installation as you progress through the steps in this tutorial. 
+You will start with a local [all-in-one Jaeger server](https://www.jaegertracing.io/docs/getting-started/) installation as you progress through the steps in this tutorial. 
 
 This all-in-one server acts as the backend for receiving the telemetry data from the various servers participating in a distributed transaction, as well as the host for the Jaeger UI console from where you can inspect the results of each transaction.
 
