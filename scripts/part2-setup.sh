@@ -34,8 +34,6 @@ metadata:
 spec:
   type: ExternalName
   externalName: jaeger-collector.istio-system.svc.cluster.local
-  ports:
-  - port: 14268
 EOF
 
 
@@ -95,6 +93,20 @@ appsody deploy --namespace tracing &
 
 cat <<EOF | kubectl apply -n tracing -f -
 apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: nodejs-tracing-v1
+spec:
+  host: nodejs-tracing
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+EOF
+
+      
+cat <<EOF | kubectl apply -n tracing -f -
+apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: tracing-tutorial-gateway
@@ -127,6 +139,115 @@ spec:
     route:
     - destination:
         host: nodejs-tracing
+        subset: v1
+        port:
+          number: 3000
+      weight: 30
+EOF
+
+
+# Step 12 (removed)
+
+cat <<EOF | kubectl apply -n tracing -f -
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: nodejs-tracing-v1
+spec:
+  host: nodejs-tracing
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: jee-tracing-v1
+spec:
+  host: jee-tracing
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: nodejs-tracing-v2
+spec:
+  host: nodejs-tracing-v2
+  subsets:
+  - name: v2
+    labels:
+      version: v2
+EOF
+
+      
+cat <<EOF | kubectl apply -n tracing -f -
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: tracing-tutorial-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: tracing-tutorialinfo
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - tracing-tutorial-gateway
+  http:
+  - match:
+    - uri:
+        exact: /node-springboot
+    - uri:
+        exact: /node-jee
+    route:
+    - destination:
+        host: nodejs-tracing
+        subset: v1
+        port:
+          number: 3000
+      weight: 30
+    - destination:
+        host: nodejs-tracing-v2
+        subset: v2
+        port:
+          number: 3000
+      weight: 70
+EOF
+
+cat <<EOF | kubectl apply -n tracing -f -
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: tracing-tutorialinfo2
+spec:
+  hosts:
+  - jee-tracing
+  gateways:
+  - tracing-tutorial-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: jee-tracing
+        subset: v1
         port:
           number: 3000
 EOF
