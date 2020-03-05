@@ -88,7 +88,7 @@ tags:
 type: tutorial
 ---
 
-This is the first on a two-part tutorial, where you will build a small system containing various interconnected microservices and study the traffic inside that system. 
+This is the first of a two-part tutorial, where you will build a small system containing various interconnected microservices and study the traffic inside that system. 
 
 The first part focus on instrumenting the application for sending its traffic to a central location and then studying the results in a dashboard. The second part focus on the deployment of the resulting services to a Kubernetes cluster augmented with a service mesh, then exploring all the benefits of distributed tracing in a potential production environment. 
 
@@ -96,9 +96,9 @@ Traffic analysis is an essential activity in determining the ideal partitioning 
 
 This tutorial is meant for developers who are familiar with [Appsody](https://developer.ibm.com/blogs/introduction-to-appsody/) and with the concept of distributed tracing using [OpenTracing](https://opentracing.io/) APIs and the popular [Jaeger client libraries](https://www.jaegertracing.io/docs/latest/client-libraries/).
 
-Appsody  is one of the upstream open source projects included in [IBM Cloud Pak for Applications] (https://www.ibm.com/cloud/cloud-pak-for-applications) and is used in this tutorial both as a way to expedite the creation of the microservices and also as a solution for introducimg instrumentation consistently across new applications.
+Appsody is one of the upstream open source projects included in [IBM Cloud Pak for Applications] (https://www.ibm.com/cloud/cloud-pak-for-applications) and is used in this tutorial to expedite the creation and testing of the microservices you are about to create.
 
-At the end of the tutorial, you will have progressed through creating multiple microservices, instrumenting them for sending their telementry to a [Jaeger](https://www.jaegertracing.io) backend (distributed tracing server) and studying the results in the Jaeger UI:
+At the end of the tutorial, you will have progressed through creating multiple microservices, instrumenting them for sending their telemetry to a [Jaeger](https://www.jaegertracing.io) backend (distributed tracing server) and studying the results in the Jaeger UI:
 
 ![Tutorial overview](images/tutorial-overview.png)
 
@@ -122,11 +122,11 @@ The [OpenTracing Data Model section](https://github.com/opentracing/specificatio
 
 ### A concrete example
 
-In our example, and assuming Jaeger as a good example of tracing backend, consider an application "A" that receives a request from a web-browser, on behalf of a user requesting the estimate for a purchase order.
+In our example, and assuming Jaeger as a good example of tracing backend, consider an application "A" that receives a request from a web browser, on behalf of a user requesting the estimate for a purchase order.
 
-Also consider how that application "A" may invoke application "B" to quote each individual item in the order.
+Also, consider how that application "A" may invoke application "B" to quote each item in the order.
 
-That application "A" could report a span covering the entire operation to the Jaeger backend and also pass the identifier of that span to application "B", so that when application "B" decides to create spans to represent its own work in that business transaction, it can create a reference of type "children" between the new spans and the "parent" span created by application A".
+That application "A" could report a span covering the entire operation to the Jaeger backend and also pass the identifier of that span to application "B" so that when application "B" decides to create spans to represent its work in that business transaction, it can create a reference of type "children" between the new spans and the "parent" span created by application A".
 
 The entire collection of spans created by both applications to represent that one transaction would be logically grouped as a single trace in the Jaeger backend and presented as such in the Jaeger UI.
 
@@ -137,9 +137,9 @@ The next figure illustrates the arrangement between the components and the resul
 
 ### OpenTracing converging into OpenTelemetry
 
-The field of distributed tracing tooling and instrumentation is changing rapidly with the convergence of [OpenTracing](https://opentracing.io/) into [OpenTelemetry](https://opentelemetry.io) . 
+The field of distributed tracing tooling and instrumentation is changing rapidly with the convergence of [OpenTracing](https://opentracing.io/) into [OpenTelemetry](https://opentelemetry.io). 
 
-This tutorial is based on the (currently) more stable OpenTracing-based client libraries, but will be updated once OpenTelemetry client libraries become more widely available.
+This tutorial is based on the (currently) more stable OpenTracing-based client libraries but will be updated once OpenTelemetry client libraries become more widely available.
 
 In the meantime, these are good references to learn more about the convergence roadmap and its implications to the Jaeger infrastructure used in this tutorial:
 
@@ -170,19 +170,19 @@ With the prerequisites in place, you should be able to complete this tutorial in
 
 Following along to this tutorial, you will perform the following steps:
 
-1. Setup local development environment
+1. Set up the local development environment
 1. Create the Node.js application
 1. Create the JEE application
 1. Create the Spring boot application
 1. Create the microservice dependencies
 1. Examining tracing results
-1. Tear down
+1. Teardown the deployment
 
 
 
-## Step 1. Setup local development environment
+## Step 1. Set up the local development environment
 
-You will start with a local [all-in-one Jaeger server](https://www.jaegertracing.io/docs/1.6/getting-started/) installation as you progress through the steps in this tutorial. 
+You will start with a local [all-in-one Jaeger server](https://www.jaegertracing.io/docs/getting-started/) installation as you progress through the steps in this tutorial. 
 
 This all-in-one server acts as the backend for receiving the telemetry data from the various servers participating in a distributed transaction, as well as the host for the Jaeger UI console from where you can inspect the results of each transaction.
 
@@ -236,7 +236,7 @@ EOF
 
 There are a couple of special remarks about the contents of this configuration file:
 
-- If you read through the [Jaeger architecture](https://www.jaegertracing.io/docs/latest/architecture/) page, the `JAEGER_ENDPOINT` variable instructs the client library to send span data directly to the Jaeger collector process instead of sending it to the intermediary agent process. This is an arbitrary decision for the purposes for this tutorial and has no impact on the final outcome in the Jaeger database. In a real production environment, there may be reasons to aggregate traffic through a Jaeger agent, but that discussion is outside the scope of this tutorial. 
+- If you read through the [Jaeger architecture](https://www.jaegertracing.io/docs/latest/architecture/) page, the `JAEGER_ENDPOINT` variable instructs the client library to send span data directly to the Jaeger collector process instead of sending it to the intermediary agent process. This is an arbitrary decision for this tutorial and has no impact on the outcome in the Jaeger database. In a real production environment, there may be reasons to aggregate traffic through a Jaeger agent, but that discussion is outside the scope of this tutorial. 
 
 - The combination of the `JAEGER_SAMPLER_TYPE` and `JAEGER_SAMPLER_PARAM` values is instructing the Jaeger client library to send every span to the Jaeger backend. This approach is appropriate for a tutorial where we want to inspect each trace, but it may negatively affect the performance of the system in a real production environment. Refer to the Jaeger documentation on [sampling](https://www.jaegertracing.io/docs/sampling/) to make an informed decision about the ideal sampling settings for your environment.
 
@@ -244,7 +244,7 @@ There are a couple of special remarks about the contents of this configuration f
 
 ## Step 2. Create the Node.js application
 
-Create the Node.js application using the Appsody command-line interface. Appsody supports both [Express](https://expressjs.com/) and [LoopBack](https://loopback.io/) frameworks. For this tutorial you will use the Express framework.
+Create the Node.js application using the Appsody command-line interface. Appsody supports both [Express](https://expressjs.com/) and [LoopBack](https://loopback.io/) frameworks. For this tutorial, you will use the Express framework.
 
 Type the following command in the command-line interface:
 
@@ -271,7 +271,7 @@ nodejs-tracing
 
 ### Assign a name to the application
 
-Since you want to easily identify the contributors of spans in a trace, the first modification to the application is to change its name inside the newly generated `package.json` file.
+Since you want to identify the contributors of spans in a trace, the first modification to the application is to change its name inside the newly generated `package.json` file.
 
 Modify the line containing `"name": "nodejs-express-simple",` in `package.json` to this line instead:
 
@@ -291,7 +291,7 @@ The first change is to include the `jaeger-client` package in your application, 
   },
 ```
 
-The Node.js Express framework does not automatically instrument RESTful calls for tracing, so you need to make a few changes to the `app.js` file in order to initialize an OpenTracing `tracer` object that can be used to make calls to the distributed tracing backend.
+The Node.js Express framework does not automatically instrument RESTful calls for tracing, so you need to make a few changes to the `app.js` file to initialize an OpenTracing `tracer` object that can be used to make calls to the distributed tracing backend.
 
 The changes are summarized as follows:
 
@@ -424,7 +424,7 @@ springboot-tracing
 
 ### Assign a name to the application
 
-Since you want to clearly identify this application while inspecting a tracing span, the first modification is to change the application name inside the newly generated `pom.xml` file.
+Since you want to identify this application while inspecting a tracing span, the first modification is to change the application name inside the newly generated `pom.xml` file.
 
 Modify the line containing `<artifactId>default-application</artifactId>` in `pom.xml` to this line instead:
 
@@ -435,9 +435,9 @@ Modify the line containing `<artifactId>default-application</artifactId>` in `po
 
 ### Enable OpenTracing using Jaeger client
 
-For this section, you will follow instructions simular to those outlined in the [Jaeger client library for Spring Boot](https://github.com/opentracing-contrib/java-spring-jaeger) .
+For this section, you will follow instructions similar to those outlined in the [Jaeger client library for Spring Boot](https://github.com/opentracing-contrib/java-spring-jaeger).
 
-The first modification is to enable OpenTracing within the Spring Boot runtime, which requires a couple of localized changes to the`pom.xml` file.
+The first modification is to enable OpenTracing within the Spring Boot runtime, which requires a couple of localized changes to the `pom.xml` file.
 
 Insert the Maven dependencies for Jaeger and OpenTracing inside the `<dependencies>` element of the `pom.xml` file:
 
@@ -525,7 +525,7 @@ You should see a message such as the one below indicating that the server is rea
 
 `[Container] ... INFO ... [  restartedMain] application.Main : Started Main...`
 
-Once you see the message, issue a few requests to the application. Any URL will be sufficient for now as the goal is to validate that the OpenTracing enablement is working before you move on to create new endpoints, so that you will use the `actuator` endpoint already pre-built into the application template.
+Once you see the message issue a few requests to the application. Any URL will be sufficient for now as the goal is to validate that the OpenTracing enablement is working before you move on to create new endpoints, so that you will use the `actuator` endpoint already pre-built into the application template.
 
 Enter the following command in a command-line terminal and repeat it a few times.
 
@@ -545,7 +545,7 @@ Choose the `app-b-springboot` application in the "Service" menu and then click o
 
 As the last application in our example microservices architecture, create a JEE application and instrument it with tracing capabilities.
 
-Create a working skeleton of a JEE application using the Open Liberty server. Open a new command-line terminal and switch to the directory where you creted the `jaeger.properties` file earlier in the tutorial, then type the following commands:
+Create a working skeleton of a JEE application using the Open Liberty server. Open a new command-line terminal and switch to the directory where you created the `jaeger.properties` file earlier in the tutorial, then type the following commands:
 
 ```sh
 mkdir jee-tracing
@@ -630,7 +630,7 @@ Replace the `webApplication` element in the `src/main/liberty/config/server.xml`
     </webApplication>
 ```
 
-About the last change, if you look at the Open Liberty documentation, it will instruct you to create a new shared library available to all applications running inside the container, but that level of complexity is unnecessary for the microservice created in this tutorial, since there will be a single application inside that server.
+About the last change, if you look at the Open Liberty documentation, it will instruct you to create a new shared library available to all applications running inside the container, but that level of complexity is unnecessary for the microservice created in this tutorial since there will be a single application inside that server.
 
 This complements the basic instrumentation of the JEE application, with the Open Liberty stack offering a solid baseline for distributed tracing, with every remote request being instrumented without code changes.
 
@@ -653,7 +653,7 @@ appsody run \
 
 Once again, notice the `network` parameter to place the container in the same custom Docker network created at the beginning of the tutorial. You can inspect the other Jaeger configuration parameters in the [Jaeger documentation for the Java client library](https://github.com/jaegertracing/jaeger-client-java/blob/master/jaeger-core/README.md).
 
-Also notice the usage of the `--publish` parameter to export port 9444 instead of 9443 to the localhost. This change is required to bypass a common network port conflict in the development environments where Docker has the Kubernetes cluster enabled and already using port 9443.
+Also, notice the usage of the `--publish` parameter to export port 9444 instead of 9443 to the localhost. This change is required to bypass a common network port conflict in the development environments where Docker has the Kubernetes cluster enabled and already using port 9443.
 
 You should see a message such as the one below indicating that the server is ready to accept requests:
 
@@ -679,12 +679,12 @@ Choose the `app-c-jee` application in the Service menu and then click on the "Fi
 
 ## Step 5. Create the microservice dependencies
 
-At this point in the tutorial you have the 3 standalone microservices running and enabled to send their tracing information to the Jaeger all-in-one server. You can proceed to create the dependencies between these microservices, materializing the microservices topology depicted at the beginning of the tutorial.
+At this point in the tutorial, you have the 3 standalone microservices running and enabled to send their tracing information to the Jaeger all-in-one server. You can proceed to create the dependencies between these microservices, materializing the microservices topology depicted at the beginning of the tutorial.
 
 
 ### Service endpoint in the Open Liberty application
 
-This new endpoint implements a typical JAX-RS REST resource, with the addition of OpenTracing API calls to create spans while the request is being processed. One of the spans is implict in the invocation of the external REST handler, while a couple of others are created explicitly inside that method to illustrate the full potential of distributed tracing bridging together both inter-process and intra-process spans of an entire distributed transaction.
+This new endpoint implements a typical JAX-RS REST resource, with the addition of OpenTracing API calls to create spans while the request is being processed. One of the spans is implicit in the invocation of the external REST handler, while a couple of others are created explicitly inside that method to illustrate the full potential of distributed tracing bridging together both inter-process and intra-process spans of an entire distributed transaction.
 
 Create a new Java class named `ServiceResource.java` in the `src/main/java/dev/appsody/starter` folder of the Spring Boot application, containing the source code below:
 
@@ -743,7 +743,7 @@ public class ServiceResource {
 
 ```
 
-There is no need to take action on the `appsody run` command already running the application, since `appsody` will automatically detect the new code changes, recompile the application, and then restart it with the new code within the same container.
+There is no need to take action on the `appsody run` command already running the application since `appsody` will automatically detect the new code changes, recompile the application, and then restart it with the new code within the same container.
 
 Monitor the log entries in the terminal where the application was started.
 
@@ -751,7 +751,7 @@ Monitor the log entries in the terminal where the application was started.
 
 ### Create service endpoint in the Sprint Boot application
 
-This endpoint is similar in concept to the endpoint created for the Open Liberty application, with the expected adaptations of REST annotations to match the Spring Boot programming model. Once again, one of the spans is implict in the invocation of the external REST handler, while a couple of others are created explicitly inside the handler.
+This endpoint is similar in concept to the endpoint created for the Open Liberty application, with the expected adaptations of REST annotations to match the Spring Boot programming model. Once again, one of the spans is implicit in the invocation of the external REST handler, while a couple of others are created explicitly inside the handler.
 
 Create a new Java class named `ServiceResource.java` in the `src/main/java/application` folder of the Spring Boot application, containing the following source code:
 
@@ -908,7 +908,7 @@ module.exports = serviceTransaction;
 
 This service call creates a distributed tracing span (named `service`) to delimit an outbound call to a remote application. Notice the [tracer.inject](https://opentracing-javascript.surge.sh/classes/tracer.html#inject) call before that outbound call, populating the HTTP headers so that the span context is propagated to the remote application. 
 
-The next modifications, to be made againts the `app.js` file, are somewhat spread out across the file, so it is easier to replace the entire contents of the file with the content below, taking a moment to inspect the code blocks between "Tutorial begin" and "Tutorial end" comments to understand the purpose of the changes:
+The next modifications, to be made against the `app.js` file, are somewhat spread out across the file, so it is easier to replace the entire contents of the file with the content below, taking a moment to inspect the code blocks between "Tutorial begin" and "Tutorial end" comments to understand the purpose of the changes:
 
 
 ```js
@@ -1013,7 +1013,7 @@ module.exports = (/*options*/) => {
 
 As you create the new `serviceBroker.js` file and replace the contents of `app.js`, notice how Appsody restarts the application automatically to reflect the changes in the actual service.
 
-The previous steps concludes the creation of the microservices in the distributed architecture proposed at the beginning of the tutorial, so you can proceed to validate the results and interact with the tracing data generated as a byproduct of business transactions.
+The previous steps conclude the creation of the microservices in the distributed architecture proposed at the beginning of the tutorial, so you can proceed to validate the results and interact with the tracing data generated as a byproduct of business transactions.
 
 
 
@@ -1036,12 +1036,12 @@ Now click on one of the trace entries, preferably one tagged with the `1 Error` 
 
 ![Detailed view of trace](/images/jaeger-ui-ab-request.png)
 
-Notice how the span contents, such as tags and log entries, correspond to the OpenTracing calls made in the endpoints.
+Notice how the span contents, such as tags and log entries, corresponding to the OpenTracing calls made in the endpoints.
 
 
 ### Inspecting HTTP headers for distributed tracing
 
-The Spring Boot and JEE microservices were instrumented to print out all incoming headers for their service points. You cantake a closer look at the output of both microservices and see the tracing HTTP headers passed from the source application.
+The Spring Boot and JEE microservices were instrumented to print out all incoming headers for their service points. You can take a closer look at the output of both microservices and see the tracing HTTP headers passed from the source application.
 
 The terminal window for the Spring Boot application should contain output similar to this for each request, with possibly different orders for the fields:
 
@@ -1088,7 +1088,7 @@ docker network rm opentrace_network
 
 ## Conclusion
 
-You have reviewed the basic concepts about distributed tracing and its usefulness, instrumented a set of interconnected microservices to generate distributed tracing information as part of their regular businerss logic, and inspected the transaction contents using a specialized user interface.
+You have reviewed the basic concepts about distributed tracing and its usefulness, instrumented a set of interconnected microservices to generate distributed tracing information as part of their regular business logic and inspected the transaction contents using a specialized user interface.
 
 Along the way, you used Appsody as a supporting tool to create microservices without needing specialized Docker knowledge to create optimized containers across a small spectrum of programming languages and frameworks.
 
@@ -1098,7 +1098,7 @@ This foundation will be leveraged in the second part of the series, where the sm
 
 ## Next steps
 
-- Further explore the [Istio Telemetry Addons](https://istio.io/docs/tasks/observability/gateways/)
+- Explore the [Istio Telemetry Addons](https://istio.io/docs/tasks/observability/gateways/)
 
 - You can try these hands-on [service mesh labs](https://learn.openshift.com/servicemesh/), which contains a good list of basic and advanced lessons.
 
@@ -1114,7 +1114,7 @@ The Jaeger client depends on the OpenTracing libraries bundled with Open Liberty
 
 As the application code evolves, it is a good development practice to pick later versions of dependency libraries, but beware of these common problems when the Jaeger client version has conflicts with the OpenTracing libraries bundled with Open Liberty.
 
-For instance, version 0.35.0 of the Jaeger client is incompatible with Open Liberty 19.0.0.12. The symptom are failed RESTful requests accompanied from this message.
+For instance, version 0.35.0 of the Jaeger client is incompatible with Open Liberty 19.0.0.12. The symptoms are failed RESTful requests accompanied by this message.
 
 `Error 500: java.lang.NoSuchMethodError: io/opentracing/ScopeManager.activeSpan&#40;&#41;Lio/opentracing/Span&#59; &#40;loaded from file:/opt/ol/wlp/lib/../dev/api/third-party/com.ibm.websphere.appserver.thirdparty.opentracing.0.31.0_1.0.35.jar by org.eclipse.osgi.internal.loader.EquinoxClassLoader@377a1965[com.ibm.websphere.appserver.thirdparty.opentracing.0.31.0:1.0.35.cl191220191120-0300&#40;id=216&#41;]&#41; called from class io.jaegertracing.internal.JaegerTracer$SpanBuilder &#40;loaded from file:/mvn/repository/io/jaegertracing/jaeger-core/0.35.0/jaeger-core-0.35.0.jar by com.ibm.ws.classloading.internal.AppClassLoader@bb1ae24d&#41;.`
 
