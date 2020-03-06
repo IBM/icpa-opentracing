@@ -205,6 +205,7 @@ Type the following starting command from a command-line terminal, observing the 
 
 ```sh
 docker run --name jaeger-collector \
+  --detach \
   --rm \
   -e COLLECTOR_ZIPKIN_HTTP_PORT=9411 \
   -p 5775:5775/udp \
@@ -332,7 +333,7 @@ module.exports = (/*options*/) => {
     // Tutorial end: OpenTracing new span
     //
 
-    // Use req.log (a `pino` instance) to log JSON:
+    // Use req.log (a pino instance) to log JSON:
     req.log.info({message: 'Hello from Appsody!'});
     res.send('Hello from Appsody!');
 
@@ -393,6 +394,7 @@ Choose the `app-a-nodejs` application in the Service menu and then click on the 
 It is time to create the Spring Boot application, once again using the Appsody command-line interface. Open another command-line terminal, switch it to the directory where you created the `jaeger.properties` file in the first step, then type the following command in the command-line interface:
 
 ```sh
+cd "${tutorial_dir}"
 mkdir springboot-tracing
 cd springboot-tracing
 appsody init incubator/java-spring-boot2
@@ -533,7 +535,7 @@ Enter the following command in a command-line terminal and repeat it a few times
 curl http://localhost:8080/actuator
 ```
 
-Now return to [Jaeger UI](http://localhost:16686) in your browser. You will need to refresh the browser screen to see the new service entry for the application (`app-b-springboot`) in the "Service" menu.
+Now return to [Jaeger UI](http://localhost:16686) in your web browser. You will need to refresh the screen to see the new service entry for the application (`app-b-springboot`) in the "Service" menu.
 
 Choose the `app-b-springboot` application in the "Service" menu and then click on the "Find Traces" button, which will display the spans created as part of the transactions you initiated from the command-line:
 
@@ -548,6 +550,7 @@ As the last application in our example microservices architecture, create a JEE 
 Create a working skeleton of a JEE application using the Open Liberty server. Open a new command-line terminal and switch to the directory where you created the `jaeger.properties` file earlier in the tutorial, then type the following commands:
 
 ```sh
+cd "${tutorial_dir}"
 mkdir jee-tracing
 cd jee-tracing
 appsody init incubator/java-openliberty
@@ -630,7 +633,7 @@ Replace the `webApplication` element in the `src/main/liberty/config/server.xml`
     </webApplication>
 ```
 
-About the last change, if you look at the Open Liberty documentation, it will instruct you to create a new shared library available to all applications running inside the container, but that level of complexity is unnecessary for the microservice created in this tutorial since there will be a single application inside that server.
+About the last change, the Open Liberty documentation instructs you to create a new shared library available to all applications running inside the Open Liberty server, but that level of complexity is unnecessary for the microservice created in this tutorial since there will be a single application inside that server.
 
 This complements the basic instrumentation of the JEE application, with the Open Liberty stack offering a solid baseline for distributed tracing, with every remote request being instrumented without code changes.
 
@@ -740,7 +743,6 @@ public class ServiceResource {
         return Response.ok(response).build();
     }
 }
-
 ```
 
 There is no need to take action on the `appsody run` command already running the application since `appsody` will automatically detect the new code changes, recompile the application, and then restart it with the new code within the same container.
@@ -903,7 +905,7 @@ async function callService(serviceCUrl, servicePayload, parentSpan) {
 
 }
 
-module.exports = serviceTransaction;
+module.exports = serviceTransaction
 ```
 
 This service call creates a distributed tracing span (named `service`) to delimit an outbound call to a remote application. Notice the [tracer.inject](https://opentracing-javascript.surge.sh/classes/tracer.html#inject) call before that outbound call, populating the HTTP headers so that the span context is propagated to the remote application. 
@@ -949,7 +951,7 @@ module.exports = (/*options*/) => {
   //
   
   app.get('/', (req, res) => {
-    // Use req.log (a `pino` instance) to log JSON:
+    // Use req.log (a pino instance) to log JSON:
     req.log.info({message: 'Hello from Appsody!'})
     res.send('Hello from Appsody!')
   })
@@ -1022,8 +1024,13 @@ The previous steps conclude the creation of the microservices in the distributed
 Issue multiple requests to the new endpoints in the Node.js application, repeating the following instructions a few times from the command-line terminal:
 
 ```sh
-curl -s http://localhost:3000/node-jee
-curl -s http://localhost:3000/node-springboot
+for i in {1..20}
+do
+  curl -s http://localhost:3000/node-jee
+  sleep 1
+  curl -s http://localhost:3000/node-springboot
+  sleep 1
+done
 ```
 
 Now go back to the [Jaeger UI](http://localhost:16686) to inspect the new traces. Select `app-a-nodejs` from the "Service" menu and click on the "Find Traces" button.
@@ -1086,6 +1093,8 @@ docker stop jaeger-collector
 docker network rm opentrace_network
 ```
 
+
+
 ## Conclusion
 
 You have reviewed the basic concepts about distributed tracing and its usefulness, instrumented a set of interconnected microservices to generate distributed tracing information as part of their regular business logic and inspected the transaction contents using a specialized user interface.
@@ -1108,7 +1117,8 @@ This foundation will be leveraged in the second part of the series, where the sm
 
 These are some of the most common problems you may find in case you miss a step or attempt to improve upon some of the code and packaging mentioned in this tutorial.
 
-### Choosing different Jaeger client for java-openliberty stack
+
+### Choosing a different version of Jaeger client for java-openliberty stack
 
 The Jaeger client depends on the OpenTracing libraries bundled with Open Liberty, which in turn is the core of the Appsody java-openliberty stack. At the time of the writing for this tutorial, the [recommended version](https://openliberty.io/blog/2019/12/06/microprofile-32-health-metrics-190012.html#jmo) is 0.34.0.
 
