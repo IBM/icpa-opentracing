@@ -63,6 +63,8 @@ metadata:
     image.opencontainers.org/title: jee-tracing
     stack.appsody.dev/id: java-openliberty
     stack.appsody.dev/version: 0.2.2
+    app: jee-tracing
+    version: v1
   name: jee-tracing
 spec:
   applicationImage: dev.local/jee-tracing
