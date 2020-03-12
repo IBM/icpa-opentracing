@@ -1,3 +1,7 @@
+cd ~
+mkdir -p workspace/opentracing-tutorial-part1
+cd workspace/opentracing-tutorial-part1
+tutorial_dir=~/workspace/opentracing-tutorial-part1
 cd "${tutorial_dir}"
 
 # step 1
@@ -12,9 +16,16 @@ EOF
 
 # step 2
 curl -L https://istio.io/downloadIstio | sh -
-export PATH="$PATH:$(PWD)/istio-1.4.4/bin"
+cd istio-*
+export PATH="$PATH:$(PWD)/bin"
+
 istioctl verify-install
-istioctl manifest apply  --set profile=demo --set values.tracing.enabled=true --set values.kiali.enabled=true
+
+istioctl manifest apply \
+  --set profile=demo \
+  --set values.tracing.enabled=true \
+  --set values.grafana.enabled=true \
+  --set values.kiali.enabled=true
 
 
 # step 3
@@ -25,17 +36,6 @@ kubectl create namespace tracing
 # step 4
 
 kubectl get all -n istio-system
-
-cat <<EOF | kubectl apply -n tracing -f -
-kind: Service
-apiVersion: v1
-metadata:
-  name: jaeger-collector
-spec:
-  type: ExternalName
-  externalName: jaeger-collector.istio-system.svc.cluster.local
-EOF
-
 
 
 # step 5
@@ -54,12 +54,24 @@ appsody build
 
 docker images dev.local/*
 
+### Edits to app-deploy.yaml (try and use YQ for it)
+
 # step 6
 cd "${tutorial_dir}"
-kubectl create configmap jaeger-config -n tracing --from-env-file=jaeger.properties
+cat <<EOF | kubectl apply -n tracing -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jaeger-config
+data:
+  JAEGER_ENDPOINT: http://jaeger-collector.istio-system.svc.cluster.local:14268/api/traces
+  JAEGER_PROPAGATION: b3
+  JAEGER_REPORTER_LOG_SPANS: "true"
+  JAEGER_SAMPLER_PARAM: "1"
+  JAEGER_SAMPLER_TYPE: const
+EOF
 
 kubectl get configmap jaeger-config -n tracing -o yaml
-
 
 # step 7
 kubectl label namespace tracing istio-injection=enabled
@@ -142,7 +154,7 @@ spec:
         subset: v1
         port:
           number: 3000
-      weight: 30
+      weight: 100
 EOF
 
 
@@ -222,12 +234,6 @@ spec:
         port:
           number: 3000
       weight: 30
-    - destination:
-        host: nodejs-tracing-v2
-        subset: v2
-        port:
-          number: 3000
-      weight: 70
 EOF
 
 cat <<EOF | kubectl apply -n tracing -f -
@@ -252,4 +258,4 @@ spec:
           number: 3000
 EOF
 
-for i in {1..50}; do curl -s localhost/node-springboot; sleep 2; curl -s localhost/node-jee; sleep 2; done
+while true ; do curl -s localhost/node-springboot; sleep 2; curl -s localhost/node-jee; sleep 2; done

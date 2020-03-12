@@ -899,13 +899,14 @@ async function callService(serviceCUrl, servicePayload, parentSpan) {
         return data;
     }
     catch (e) {
+        span.setTag(Tags.ERROR, true)
         span.finish();
         throw e;
     }
 
 }
 
-module.exports = serviceTransaction
+module.exports = serviceTransaction;
 ```
 
 This service call creates a distributed tracing span (named `service`) to delimit an outbound call to a remote application. Notice the [tracer.inject](https://opentracing-javascript.surge.sh/classes/tracer.html#inject) call before that outbound call, populating the HTTP headers so that the span context is propagated to the remote application. 

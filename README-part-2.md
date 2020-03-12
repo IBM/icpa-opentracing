@@ -173,49 +173,36 @@ The next steps assume the usage of the Istio "Demo" profile added on top of mini
 
 Assuming you will follow the recommendation of using minikube or the Kubernetes cluster bundled with Docker Desktop, proceed with the [Istio installation instructions](https://istio.io/docs/setup/getting-started/), which are summarized below:
 
+IMPORTANT: [This Appsody issue](https://github.com/appsody/appsody-operator/issues/227) is currently blocking the usage of Istio 1.5 and above, so do not update the `ISTIO_VERSION` in the command below until that issue is fixed:
 
 ```
-curl -L https://istio.io/downloadIstio | sh -
-
-export PATH="$PATH:$(PWD)/istio-1.4.4/bin"
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.4.4 sh -
+cd istio-1.4*
+export PATH="$PATH:$(PWD)/bin"
 
 istioctl verify-install
 
 istioctl manifest apply \
   --set profile=demo \
   --set values.tracing.enabled=true \
+  --set values.grafana.enabled=true \
   --set values.kiali.enabled=true
 ```
 
-The output shoud look similar to the one below
+The output shoud look similar to the one below:
 
 ```
+Detected that your cluster does not support third party JWT authentication. Falling back to less secure first party JWT. See https://istio.io/docs/ops/best-practices/security/#configure-third-party-service-account-tokens for details.
 - Applying manifest for component Base...
 ✔ Finished applying manifest for component Base.
-- Applying manifest for component Tracing...
-- Applying manifest for component Citadel...
-- Applying manifest for component Policy...
-- Applying manifest for component Prometheus...
-- Applying manifest for component Kiali...
-- Applying manifest for component EgressGateway...
-- Applying manifest for component IngressGateway...
 - Applying manifest for component Pilot...
-- Applying manifest for component Galley...
-- Applying manifest for component Telemetry...
-- Applying manifest for component Injector...
-- Applying manifest for component Grafana...
-✔ Finished applying manifest for component Citadel.
-✔ Finished applying manifest for component Prometheus.
-✔ Finished applying manifest for component Kiali.
-✔ Finished applying manifest for component Galley.
-✔ Finished applying manifest for component Tracing.
-✔ Finished applying manifest for component Injector.
-✔ Finished applying manifest for component Policy.
 ✔ Finished applying manifest for component Pilot.
-✔ Finished applying manifest for component EgressGateway.
-✔ Finished applying manifest for component IngressGateway.
-✔ Finished applying manifest for component Grafana.
-✔ Finished applying manifest for component Telemetry.
+- Applying manifest for component EgressGateways...
+- Applying manifest for component IngressGateways...
+- Applying manifest for component AddonComponents...
+✔ Finished applying manifest for component EgressGateways.
+✔ Finished applying manifest for component IngressGateways.
+✔ Finished applying manifest for component AddonComponents.
 ```
 
 
@@ -306,7 +293,7 @@ Add the new ConfigMap to the application, inserting the `envFrom` snippet to the
 spec:
 ...
   envFrom:
-  - configMapRef:
+  - configMap Ref:
       name: jaeger-config
   ...
 ```
@@ -525,7 +512,7 @@ You can verify the results of the trace data collected from the applications whi
 First, launch the Grafana dashboard, typing the following instruction from the command-line:
 
 ```sh
-istioctl dashboard grafana
+istioctl dashboard grafana &
 ```
 
 Once the new tab for the Grafana UI shows up in your default browser, select the "Explore" button on the left navigation bar, you can inspect some of the Istio pre-packaged dashboards by clicking on the "Dashboards" menu in the left menu, then select "Manage".
@@ -552,11 +539,33 @@ The resulting visualization in the picture below is a simple and effective way o
 
 If you do not see some of the response errors in the chart, which is expected since the sequence of steps in the tutorial waited until all microservices were up and running, you can simulate a system crash where all pods get restarted simultaneously.
 
-Assuming you left that `while` loop running in the background, sending requests to the Node.js application, simulate a system crash by requesting the deletion of all pods created in this tutorial, typing the following instruction in the command-line:
+Assuming you left that `while` loop running in the background, sending requests to the Node.js application, simulate a system crash by using the Istio [Fault Injection](https://istio.io/docs/tasks/traffic-management/fault-injection/) support.
+
+Inject the failure by creating an Istio `VirtualService` for the `jee-tracing` microservice:
 
 ```sh
- kubectl delete pods -n tracing -l app.kubernetes.io/managed-by=appsody-operator
- ```
+cat <<EOF | kubectl apply -n tracing -f -
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: jee-tracing
+spec:
+  hosts:
+  - jee-tracing
+  http:
+  - fault:
+      abort:
+        httpStatus: 502
+        percentage:
+          value: 70
+    route:
+    - destination:
+        host: jee-tracing
+  - route:
+    - destination:
+        host: jee-tracing
+EOF
+```
 
 The pods will get restarted in a few moments, but the incoming requests should get disrupted by all the restarts, generating several HTTP response codes such as `404` (for services not found) and `503` (gateway unavailable).
 
@@ -612,6 +621,34 @@ Select "istio-mixer" in the "Service" menu and hit the "Find Traces" button, the
 ![Trace starting from Istio Ingress](/images/jaeger-istio-ingress.png)
 
 In this trace you can see the points where Istio has injected its traffic management into the business transactions, mediating inbound and inter-component traffic along the way.
+
+As a last modification to the system, we can further exploit Istio's fault injection to introduce a delay on the responses from a microservice, which is useful to explore the overall system tolerance to slow responses in given component.
+
+Inject the failure by creating an Istio `VirtualService` for the `springboot-tracing` microservice:
+
+```sh
+cat <<EOF | kubectl apply -n tracing -f -
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: springboot-tracing
+spec:
+  hosts:
+  - springboot-tracing
+  http:
+  - fault:
+      delay:
+        fixedDelay: 1s
+        percentage:
+          value: 90
+    route:
+    - destination:
+        host: springboot-tracing
+  - route:
+    - destination:
+        host: springboot-tracing
+EOF
+```
 
 
 

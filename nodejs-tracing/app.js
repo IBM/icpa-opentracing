@@ -51,11 +51,12 @@ module.exports = (/*options*/) => {
     const span = tracer.startSpan(spanName, { childOf: wireCtx })
     span.log({ event: 'request_received' })
 
-    const payload = { 'itemId': uuid(), 'count': Math.floor(1 + Math.random() * 10)}
+    const payload = { itemId: uuid(), 
+                      count: Math.floor(1 + Math.random() * 10)}
     serviceTransaction(serviceCUrl, payload, span)
       .then(() => {
         const finishSpan = () => {
-          span.log({'event': 'request_end'})
+          span.log({ event : 'request_end'})
           span.finish()
         }
 
@@ -77,11 +78,12 @@ module.exports = (/*options*/) => {
     const span = tracer.startSpan(spanName, { childOf: wireCtx })
     span.log({ event: 'request_received' })
 
-    const payload = { 'order': uuid(), 'total': Math.floor(1 + Math.random() * 10000)}
+    const payload = { order: uuid(), 
+                      total: Math.floor(1 + Math.random() * 10000)}
     serviceTransaction(serviceCUrl, payload, span)
       .then(() => {
         const finishSpan = () => {
-          span.log({'event': 'request_end'})
+          span.log({ event : 'request_end'})
           span.finish()
         }
 
