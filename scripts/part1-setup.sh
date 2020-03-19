@@ -1,6 +1,9 @@
 
 # step 1
 
+stack_hub_url=https://github.com/kabanero-io/kabanero-stack-hub/releases/latest/download/kabanero-stack-hub-index.yaml
+appsody list kabanero 2> /dev/null || appsody repo add kabanero ${stack_hub_url}
+
 docker network create opentrace_network
 
 docker run --name jaeger-collector \
@@ -18,8 +21,11 @@ docker run --name jaeger-collector \
   jaegertracing/all-in-one:latest
 
 cd ~
-mkdir -p workspace/opentracing-tutorial-part1
-cd workspace/opentracing-tutorial-part1
+tutorial_dir=~/workspace/opentracing-tutorial-part1
+rm -rf "${tutorial_dir}"
+mkdir -p "${tutorial_dir}"
+cd "${tutorial_dir}"
+
 
 cat > jaeger.properties << EOF
 JAEGER_ENDPOINT=http://jaeger-collector:14268/api/traces
@@ -31,12 +37,10 @@ EOF
 
 # step 2 - new window
 
-cd ~
-tutorial_dir=~/workspace/opentracing-tutorial-part1
 cd "${tutorial_dir}"
-mkdir springboot-tracing
-cd springboot-tracing
-appsody init incubator/java-spring-boot2
+mkdir nodejs-tracing
+cd nodejs-tracing
+appsody init kabanero/nodejs-express
 
 sed -i bak 's|"name": "nodejs-express-simple",|"name": "app-a-nodejs",|' package.json
 sed -i bak $'/devDependencies/  i\
@@ -45,55 +49,52 @@ sed -i bak $'/devDependencies/  i\
 \\  },\\\n' package.json
 
 cat<<EOF > app.js
-module.exports = (/*options*/) => {
-  // Use options.server to access http.Server. Example with socket.io:
-  //     const io = require('socket.io')(options.server)
-  const app = require('express')()
+const app = require('express')()
 
-  //
-  // Tutorial begin: Global initialization block
-  //
-  var initTracerFromEnv = require('jaeger-client').initTracerFromEnv;
-  var config = {
-    serviceName: 'app-a-nodejs',
-  };
-  var options = {
-  };
-  var tracer = initTracerFromEnv(config, options);
-  //
-  // Tutorial end: Global initialization block
-  //
-  
-  app.get('/', (req, res) => {
-    //
-    // Tutorial begin: OpenTracing new span
-    //
-    const span = tracer.startSpan('http_request');
-    //
-    // Tutorial end: OpenTracing new span
-    //
-
-    // Use req.log (a pino instance) to log JSON:
-    req.log.info({message: 'Hello from Appsody!'});
-    res.send('Hello from Appsody!');
-
-    //
-    // Tutorial begin: Send span information to Jaeger
-    //
-    span.log({'event': 'request_end'});
-    span.finish();
-    //
-    // Tutorial end: Send span information to Jaeger
-    //
-  });
-
-  return app;
+//
+// Tutorial begin: Global initialization block
+//
+var initTracerFromEnv = require('jaeger-client').initTracerFromEnv;
+var config = {
+  serviceName: 'app-a-nodejs',
 };
+var options = {
+};
+var tracer = initTracerFromEnv(config, options);
+//
+// Tutorial end: Global initialization block
+//
+
+app.get('/', (req, res) => {
+  //
+  // Tutorial begin: OpenTracing new span
+  //
+  const span = tracer.startSpan('http_request');
+  //
+  // Tutorial end: OpenTracing new span
+  //
+
+  // Use req.log (a pino instance) to log JSON:
+  req.log.info({message: 'Hello from Appsody!'});
+  res.send('Hello from Appsody!');
+
+  //
+  // Tutorial begin: Send span information to Jaeger
+  //
+  span.log({'event': 'request_end'});
+  span.finish();
+  //
+  // Tutorial end: Send span information to Jaeger
+  //
+});
+
+module.exports.app = app;
 EOF
 
 
 appsody run \
   --name "nodejs-tracing" \
+  --publish "8081:8080" \
   --docker-options="--env-file ../jaeger.properties" \
   --network opentrace_network 
 
@@ -104,7 +105,7 @@ tutorial_dir=~/workspace/opentracing-tutorial-part1
 cd "${tutorial_dir}"
 mkdir springboot-tracing
 cd springboot-tracing
-appsody init incubator/java-spring-boot2
+appsody init kabanero/java-spring-boot2
 
 sed -i bak 's|<artifactId>default-application</artifactId>|<artifactId>app-b-springboot</artifactId>|' pom.xml
 
@@ -145,6 +146,11 @@ public class Main {
 }
 EOF
 
+appsody run \
+  --name springboot-tracing \
+  --docker-options="--env-file ../jaeger.properties" \
+  --network opentrace_network 
+
 
 # step 4 - new window
 
@@ -152,7 +158,7 @@ tutorial_dir=~/workspace/opentracing-tutorial-part1
 cd "${tutorial_dir}"
 mkdir jee-tracing
 cd jee-tracing
-appsody init incubator/java-openliberty
+appsody init kabanero/java-openliberty
 
 sed -i bak 's|<artifactId>starter-app</artifactId>|<artifactId>app-c-jee</artifactId>|' pom.xml
 sed -i bak $'/\<\/dependencies\>/  i\
@@ -228,8 +234,18 @@ public class ServiceResource {
 }
 EOF
 
+appsody run \
+  --name jee-tracing \
+  --publish "9444:9443" \
+  --docker-options="--env-file ../jaeger.properties" \
+  --network opentrace_network 
+
 
 # step 5
+
+tutorial_dir=~/workspace/opentracing-tutorial-part1
+cd "${tutorial_dir}"
+cd jee-tracing
 
 cat<<EOF > src/main/java/dev/appsody/starter/ServiceResource.java
 package dev.appsody.starter;
@@ -285,6 +301,10 @@ public class ServiceResource {
 }
 EOF
 
+
+tutorial_dir=~/workspace/opentracing-tutorial-part1
+cd "${tutorial_dir}"
+cd springboot-tracing
 
 cat<<EOF > src/main/java/application/ServiceResource.java
 package application;
@@ -349,12 +369,24 @@ public class ServiceResource {
 }
 EOF
 
+
+tutorial_dir=~/workspace/opentracing-tutorial-part1
+cd "${tutorial_dir}"
+cd nodejs-tracing
+
+
 sed -i bak 's|"jaeger-client": "^3.17.1"|"jaeger-client": "^3.17.1",|' package.json
 sed -i bak $'/jaeger-client/  a\
-\\    ,"opentracing": "latest", \
+\\    "opentracing": "latest", \
 \\    "request-promise": "^4.2.0", \
 \\    "uuid-random": "latest"\\\n' package.json
 
+appsody stop
+appsody run \
+  --name "nodejs-tracing" \
+  --publish "8081:8080" \
+  --docker-options="--env-file ../jaeger.properties" \
+  --network opentrace_network 
 
 cat<<EOF > serviceBroker.js
 // serviceBroker.js
@@ -416,103 +448,97 @@ EOF
 
 
 cat <<EOF > app.js
-module.exports = (/*options*/) => {
-  // Use options.server to access http.Server. Example with socket.io:
-  //     const io = require('socket.io')(options.server)
-  const app = require('express')()
+const app = require('express')()
 
-  //
-  // Tutorial begin: Remote requests to other applications
-  //
-  const uuid = require('uuid-random')
-  const serviceTransaction = require('./serviceBroker.js')
-  //
-  // Tutorial end: Remote requests to other applications
-  //
-  
-  //
-  // Tutorial begin: OpenTracing initialization
-  //
-  const opentracing = require('opentracing')
-  var initTracerFromEnv = require('jaeger-client').initTracerFromEnv
-  var config = { serviceName: 'app-a-nodejs' }
-  var options = {}
-  var tracer = initTracerFromEnv(config, options)
-  
-  // This block is required for compatibility with the service meshes 
-  // using B3 headers for header propagation
-  // https://github.com/openzipkin/b3-propagation
-  const ZipkinB3TextMapCodec = require('jaeger-client').ZipkinB3TextMapCodec
-  let codec = new ZipkinB3TextMapCodec({ urlEncoding: true });
-  tracer.registerInjector(opentracing.FORMAT_HTTP_HEADERS, codec);
-  tracer.registerExtractor(opentracing.FORMAT_HTTP_HEADERS, codec);
+//
+// Tutorial begin: Remote requests to other applications
+//
+const uuid = require('uuid-random')
+const serviceTransaction = require('./serviceBroker.js')
+//
+// Tutorial end: Remote requests to other applications
+//
 
-  opentracing.initGlobalTracer(tracer)
-  //
-  // Tutorial end: OpenTracing initialization
-  //
-  
-  app.get('/', (req, res) => {
-    // Use req.log (a pino instance) to log JSON:
-    req.log.info({message: 'Hello from Appsody!'})
-    res.send('Hello from Appsody!')
-  })
+//
+// Tutorial begin: OpenTracing initialization
+//
+const opentracing = require('opentracing')
+var initTracerFromEnv = require('jaeger-client').initTracerFromEnv
+var config = { serviceName: 'app-a-nodejs' }
+var options = {}
+var tracer = initTracerFromEnv(config, options)
 
-  // Tutorial begin: Transaction A-B 
-  app.get('/node-springboot', (req, res) => {
-    const baseUrl = 'http://springboot-tracing:8080'
-    const serviceCUrl = baseUrl + '/resource'
-    const spanName = 'http_request_ab'
- 
-    // https://opentracing-javascript.surge.sh/classes/tracer.html#extract
-    const wireCtx = tracer.extract(opentracing.FORMAT_HTTP_HEADERS, req.headers)
-    const span = tracer.startSpan(spanName, { childOf: wireCtx })
-    span.log({ event: 'request_received' })
+// This block is required for compatibility with the service meshes 
+// using B3 headers for header propagation
+// https://github.com/openzipkin/b3-propagation
+const ZipkinB3TextMapCodec = require('jaeger-client').ZipkinB3TextMapCodec
+let codec = new ZipkinB3TextMapCodec({ urlEncoding: true });
+tracer.registerInjector(opentracing.FORMAT_HTTP_HEADERS, codec);
+tracer.registerExtractor(opentracing.FORMAT_HTTP_HEADERS, codec);
 
-    const payload = { 'itemId': uuid(), 'count': Math.floor(1 + Math.random() * 10)}
-    serviceTransaction(serviceCUrl, payload, span)
-      .then(() => {
-        const finishSpan = () => {
-          span.log({'event': 'request_end'})
-          span.finish()
-        }
+opentracing.initGlobalTracer(tracer)
+//
+// Tutorial end: OpenTracing initialization
+//
 
-        res.on('finish', finishSpan)
+app.get('/', (req, res) => {
+  res.send('Hello from Appsody!')
+})
 
-        req.log.info({message: spanName})
-        res.send(payload)
-      })
-  })
-  // Tutorial end: Transaction A-B
+// Tutorial begin: Transaction A-B 
+app.get('/node-springboot', (req, res) => {
+  const baseUrl = 'http://springboot-tracing:8080'
+  const serviceCUrl = baseUrl + '/resource'
+  const spanName = 'http_request_ab'
 
-  // Tutorial begin: Transaction A-C
-  app.get('/node-jee', (req, res) => {
-    const baseUrl = 'http://jee-tracing:9080'
-    const serviceCUrl = baseUrl + '/starter/service'
-    const spanName = 'http_request_ac'
+  // https://opentracing-javascript.surge.sh/classes/tracer.html#extract
+  const wireCtx = tracer.extract(opentracing.FORMAT_HTTP_HEADERS, req.headers)
+  const span = tracer.startSpan(spanName, { childOf: wireCtx })
+  span.log({ event: 'request_received' })
 
-    const wireCtx = tracer.extract(opentracing.FORMAT_HTTP_HEADERS, req.headers)
-    const span = tracer.startSpan(spanName, { childOf: wireCtx })
-    span.log({ event: 'request_received' })
+  const payload = { itemId: uuid(), 
+                    count: Math.floor(1 + Math.random() * 10)}
+  serviceTransaction(serviceCUrl, payload, span)
+    .then(() => {
+      const finishSpan = () => {
+        span.log({ event : 'request_end'})
+        span.finish()
+      }
 
-    const payload = { 'order': uuid(), 'total': Math.floor(1 + Math.random() * 10000)}
-    serviceTransaction(serviceCUrl, payload, span)
-      .then(() => {
-        const finishSpan = () => {
-          span.log({'event': 'request_end'})
-          span.finish()
-        }
+      res.on('finish', finishSpan)
 
-        res.on('finish', finishSpan)
+      res.send(payload)
+    })
+})
+// Tutorial end: Transaction A-B
 
-        req.log.info({message: spanName})
-        res.send(payload)
-      })
-  })
-  // Tutorial end: Transaction A-C
+// Tutorial begin: Transaction A-C
+app.get('/node-jee', (req, res) => {
+  const baseUrl = 'http://jee-tracing:9080'
+  const serviceCUrl = baseUrl + '/starter/service'
+  const spanName = 'http_request_ac'
 
-  return app
-}
+  const wireCtx = tracer.extract(opentracing.FORMAT_HTTP_HEADERS, req.headers)
+  const span = tracer.startSpan(spanName, { childOf: wireCtx })
+  span.log({ event: 'request_received' })
+
+  const payload = { order: uuid(), 
+                    total: Math.floor(1 + Math.random() * 10000)}
+  serviceTransaction(serviceCUrl, payload, span)
+    .then(() => {
+      const finishSpan = () => {
+        span.log({ event : 'request_end'})
+        span.finish()
+      }
+
+      res.on('finish', finishSpan)
+
+      res.send(payload)
+    })
+})
+// Tutorial end: Transaction A-C
+
+module.exports.app = app;
 EOF
 
 

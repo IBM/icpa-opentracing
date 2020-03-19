@@ -1,2 +1,2 @@
 project-name: jee-tracing
-stack: docker.io/appsody/java-openliberty:0.2
+stack: docker.io/kabanero/java-openliberty:0.2

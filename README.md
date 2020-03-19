@@ -1,5 +1,7 @@
 ---
-# Related publishing issue: https://github.ibm.com/IBMCode/IBMCodeContent/issues/3797
+# Related publishing issue: https://github.ibm.com/IBMCode/Code-Tutorials/issues/3142
+
+abstract: "Making sense of Appsody microservice transactions with distributed tracing."
 
 authors:
   - name: "Denilson Nastacio"
@@ -7,10 +9,7 @@ authors:
 
 # cities:        # Required=false For a full list of options see https://github.ibm.com/IBMCode/Definitions/blob/master/cities.yml. Use the slug value found at the referenced link to include it in this content.
 
-# collection:        # Required=false 
-
 completed_date: '2020-03-03'
-last_updated: '2020-03-03'
 
 components:        # Required=false For a full list of options see https://github.ibm.com/IBMCode/Definitions/blob/master/components.yml
   - "cloud-pak-for-applications"
@@ -24,11 +23,13 @@ components:        # Required=false For a full list of options see https://githu
 
 draft: true
 
-meta_description: "Making sense of Appsody microservice transactions with distributed tracing."
-abstract: "Making sense of Appsody microservice transactions with distributed tracing."
 excerpt: "Making sense of Appsody microservice transactions with distributed tracing."
 
-meta_keywords:        # Required=true This is a comma separated list of keywords used for SEO purposes.
+last_updated: '2020-03-03'
+
+# meta_description:		# Required=false This is a description used for SEO purposes.
+
+meta_keywords:        # Required=false This is a comma separated list of keywords used for SEO purposes.
   - "appsody"
   - "icpa"
   - "kabanero"
@@ -37,12 +38,9 @@ meta_keywords:        # Required=true This is a comma separated list of keywords
   - "opentracing"
   - "jaeger"
 
+meta_title:		# Required=false This is the title used for SEO purposes.
+
 primary_tag: appsody
-
-pta: "cloud, container, and infrastructure"
-
-pwg:        # Required=true Note: can be one or many. For a full list of options see https://github.ibm.com/IBMCode/Definitions/blob/master/portfolio-working-group.yml. Use the slug value found at the referenced link to include it in this content.
-  - containers
 
 related_content:        # Required=false Note: zero or more related content
   - type: "blogs"
@@ -74,9 +72,15 @@ related_links:
   - title: "Java Spring Jaeger API"
     url: "https://github.com/opentracing-contrib/java-spring-jaeger"
 
+# runtimes:		# Required=false Select runtimes from the complete set of runtimes in the following url: https://github.ibm.com/IBMCode/Definitions/blob/master/runtimes.yml. Use the slug field only. Do not create new runtimes. Only use runtimes specifically in use by your content.
+services:		# Required=false Select services from the complete list of services in the following url: https://github.ibm.com/IBMCode/Definitions/blob/master/services.yml. Use the slug field only. Do not create new services. Only use services specifically in use by your content.
+  -
 
-title: "Distributed tracing for Appsody microservices: Part 1"
-meta_title: "Distributed tracing for Appsody microservices: Part 1"
+pta: "cloud, container, and infrastructure"
+
+pwg:        # Required=true Note: can be one or many. For a full list of options see https://github.ibm.com/IBMCode/Definitions/blob/master/portfolio-working-group.yml. Use the slug value found at the referenced link to include it in this content.
+  - containers
+
 subtitle: "Make sense of Appsody microservice transactions with distributed tracing"
 
 tags:
@@ -85,7 +89,21 @@ tags:
   - "containers"
   - "microservices"
 
+title: "Distributed tracing for Appsody microservices: Part 1"
+
 type: tutorial
+
+collections:		# Required=false For a full list of options see https://github.ibm.com/IBMCode/Definitions/blob/master/collections.yml. Use the slug value found at the referenced link to include it in this content.
+
+archive_date:		# Required=false Note that the date format is YYYY-MM-DD
+
+ignore_prod: true|false		# Required=false Do not publish this tutorial
+
+meta_tags:		# Required=false This is a comma separated list of tags used for SEO purposes.
+
+social_media_meta:		# Required=false This is a description used for SEO purposes.
+
+content_tags: #featured - collection|		# Required=false Make this a featured item
 ---
 
 This is the first of a two-part tutorial, where you will build a small system containing various interconnected microservices and study the traffic inside that system. 
@@ -1038,11 +1056,11 @@ Now go back to the [Jaeger UI](http://localhost:16686) to inspect the new traces
 
 You should see a trace for each of the requests issued from the command line.
 
-![Trace entries for transaction from application A to applications B and C](/images/jaeger-ui-trace-query.png)
+![Trace entries for transaction from application A to applications B and C](images/jaeger-ui-trace-query.png)
 
 Now click on one of the trace entries, preferably one tagged with the `1 Error` marker, which is set within the Spring Boot and JEE service endpoints depending on the values in the input values for the request. Take a couple of moments to expand the span segments and inspect their contents.
 
-![Detailed view of trace](/images/jaeger-ui-ab-request.png)
+![Detailed view of trace](images/jaeger-ui-ab-request.png)
 
 Notice how the span contents, such as tags and log entries, corresponding to the OpenTracing calls made in the endpoints.
 

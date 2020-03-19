@@ -109,8 +109,7 @@ If you are new to service meshes and want to learn more about them before procee
 
 * [Install the Appsody CLI](https://appsody.dev/docs/getting-started/installation).
 
-* Install Kubernetes. [minikube](https://github.com/kubernetes/minikube) will work on most platforms, but if using Docker Desktop, the internal Kubernetes enabled from the Docker Desktop Preferences (macOS) or Settings (Windows) panel is a more convenient alternative.
-
+* Install Kubernetes locally if you do not have access to a Kubernetes or OpenShift cluster. [minikube](https://github.com/kubernetes/minikube) will work on most platforms, but if using Docker Desktop, the internal Kubernetes enabled from the Docker Desktop Preferences (macOS) or Settings (Windows) panel is a more convenient alternative. 
 
 
 ## Estimated time
