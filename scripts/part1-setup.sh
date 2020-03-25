@@ -20,6 +20,8 @@ docker run --name jaeger-collector \
   --network opentrace_network \
   jaegertracing/all-in-one:latest
 
+docker logs jaeger-collector
+
 cd ~
 tutorial_dir=~/workspace/opentracing-tutorial-part1
 rm -rf "${tutorial_dir}"
@@ -115,27 +117,27 @@ package application;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-// 
+//
 // Tutorial: Begin import statements for Jaeger and OpenTracing
 //
 import org.springframework.context.annotation.Bean;
 import io.jaegertracing.Configuration;
 import io.opentracing.Tracer;
-// 
+//
 // Tutorial: End import statements for Jaeger and OpenTracing
 //
 
 @SpringBootApplication
 public class Main {
 
-        // 
+        //
         // Tutorial: Begin initialization of OpenTracing tracer
         //
         @Bean
         public Tracer initTracer() {
           return Configuration.fromEnv("app-b-springboot").getTracer();
         }
-        // 
+        //
         // Tutorial: End initialization of OpenTracing tracer
         //
 
@@ -149,8 +151,7 @@ EOF
 appsody run \
   --name springboot-tracing \
   --docker-options="--env-file ../jaeger.properties" \
-  --network opentrace_network 
-
+  --network opentrace_network
 
 # step 4 - new window
 
@@ -179,60 +180,6 @@ sed -i bak $'/\<\/server\>/  i\
 \\        \<classloader apiTypeVisibility="+third-party" \/\> \
 \\    \<\/webApplication\>\\\n\\\n' src/main/liberty/config/server.xml
 
-
-cat<<EOF > src/main/java/dev/appsody/starter/ServiceResource.java
-package dev.appsody.starter;
-
-import javax.inject.Inject;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.Response;
-
-import io.opentracing.Scope;
-import io.opentracing.Tracer;
-import io.opentracing.tag.Tags;
-
-@Path("/service")
-public class ServiceResource {
-
-    @Inject
-    Tracer tracer;
-
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response completeOrder(JsonObject orderPayload, @Context HttpHeaders httpHeaders) {
-        try (Scope childScope = tracer.buildSpan("phase_1").startActive(true)) {
-            MultivaluedMap<String, String> requestHeaders = httpHeaders.getRequestHeaders();
-            requestHeaders.forEach((k, v) -> System.out.println(k + ":" + v.toString()));
-            System.out.println(orderPayload);
-            System.out.println("baggage item: " + tracer.activeSpan().getBaggageItem("baggage"));
-        }
-
-        try (Scope childScope = tracer.buildSpan("phase_2").startActive(true)) {
-            double orderTotal = orderPayload.getJsonNumber("total").doubleValue();
-            if (orderTotal > 6000) {
-                childScope.span().setTag(Tags.ERROR.getKey(), true);
-                childScope.span().log("Order value " + orderTotal + " is too high");
-            }
-            // Simulation of long stretch of work
-            Thread.sleep(60);
-        } catch (InterruptedException e) {
-            // no-op
-        }
-
-        JsonObject response = Json.createObjectBuilder().add("status", "completed")
-                .add("order", orderPayload.getString("order")).build();
-        return Response.ok(response).build();
-    }
-}
-EOF
 
 appsody run \
   --name jee-tracing \
@@ -380,13 +327,14 @@ sed -i bak $'/jaeger-client/  a\
 \\    "opentracing": "latest", \
 \\    "request-promise": "^4.2.0", \
 \\    "uuid-random": "latest"\\\n' package.json
+cat package.json
 
-appsody stop
+appsody stop --name nodejs-tracing
 appsody run \
   --name "nodejs-tracing" \
   --publish "8081:8080" \
   --docker-options="--env-file ../jaeger.properties" \
-  --network opentrace_network 
+  --network opentrace_network
 
 cat<<EOF > serviceBroker.js
 // serviceBroker.js
@@ -437,13 +385,14 @@ async function callService(serviceCUrl, servicePayload, parentSpan) {
         return data;
     }
     catch (e) {
+        span.setTag(Tags.ERROR, true)
         span.finish();
         throw e;
     }
 
 }
 
-module.exports = serviceTransaction
+module.exports = serviceTransaction;
 EOF
 
 
@@ -468,7 +417,7 @@ var config = { serviceName: 'app-a-nodejs' }
 var options = {}
 var tracer = initTracerFromEnv(config, options)
 
-// This block is required for compatibility with the service meshes 
+// This block is required for compatibility with the service meshes
 // using B3 headers for header propagation
 // https://github.com/openzipkin/b3-propagation
 const ZipkinB3TextMapCodec = require('jaeger-client').ZipkinB3TextMapCodec
@@ -485,7 +434,7 @@ app.get('/', (req, res) => {
   res.send('Hello from Appsody!')
 })
 
-// Tutorial begin: Transaction A-B 
+// Tutorial begin: Transaction A-B
 app.get('/node-springboot', (req, res) => {
   const baseUrl = 'http://springboot-tracing:8080'
   const serviceCUrl = baseUrl + '/resource'
@@ -496,7 +445,7 @@ app.get('/node-springboot', (req, res) => {
   const span = tracer.startSpan(spanName, { childOf: wireCtx })
   span.log({ event: 'request_received' })
 
-  const payload = { itemId: uuid(), 
+  const payload = { itemId: uuid(),
                     count: Math.floor(1 + Math.random() * 10)}
   serviceTransaction(serviceCUrl, payload, span)
     .then(() => {
@@ -522,7 +471,7 @@ app.get('/node-jee', (req, res) => {
   const span = tracer.startSpan(spanName, { childOf: wireCtx })
   span.log({ event: 'request_received' })
 
-  const payload = { order: uuid(), 
+  const payload = { order: uuid(),
                     total: Math.floor(1 + Math.random() * 10000)}
   serviceTransaction(serviceCUrl, payload, span)
     .then(() => {
