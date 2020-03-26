@@ -1,0 +1,16 @@
+name: Node.js Express + Observability
+version: 0.3.0
+description: Express web framework for Node.js
+license: Apache-2.0
+language: nodejs
+maintainers:
+  - name: Denilson Nastacio
+    email: dnastacio@gmail.com
+    github-id: nastacio
+  - name: Chris Bailey
+    email: cnbailey@gmail.com
+    github-id: seabaylea
+  - name: Neeraj Laad
+    email: neeraj.laad@gmail.com
+    github-id: neeraj-laad
+default-template: simple
