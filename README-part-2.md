@@ -292,7 +292,7 @@ Add the new ConfigMap to the application, inserting the `envFrom` snippet to the
 spec:
 ...
   envFrom:
-  - configMap Ref:
+  - configMapRef:
       name: jaeger-config
   ...
 ```
