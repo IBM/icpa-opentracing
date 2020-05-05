@@ -64,7 +64,7 @@
       "pluginVersion": "6.4.3",
       "targets": [
         {
-          "expr": "count by (destination_service_name,response_code)(istio_requests_total{destination_service_namespace=\"tracing\",response_code!=\"200\"})",
+          "expr": "count by (destination_service_name,response_code)(istio_requests_total{destination_service_namespace=\"cloudlab\",response_code!=\"200\"})",
           "format": "time_series",
           "instant": false,
           "legendFormat": "{{destination_service_name}},{{response_code}}",
@@ -117,7 +117,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg by (destination_service_name, destination_version, response_code)(rate(istio_requests_total{destination_service_namespace=\"tracing\"}[5m])) ",
+          "expr": "avg by (destination_service_name, destination_version, response_code)(rate(istio_requests_total{destination_service_namespace=\"cloudlab\"}[5m])) ",
           "legendFormat": "{{destination_service_name}},{{response_code}}",
           "refId": "A"
         }
