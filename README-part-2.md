@@ -78,13 +78,13 @@ tags:
 type: tutorial
 ---
 
-This the second part of a two-part tutorial, where you will deploy the microservices created in part 1 behind a service mesh in a Kubernetes cluster and then use popular traffic analysis tools to observe and inspect the internal state of the distributed service
+This is the second part of a two-part tutorial, where you will deploy the microservices created in part 1 behind a service mesh in a Kubernetes cluster and then use popular traffic analysis tools to observe and inspect the internal state of the distributed service
 
 This tutorial is meant for developers who are somewhat familiar with the concept of distributed tracing using [OpenTracing](https://opentracing.io/) APIs as well as the [Istio service mesh](https://istio.io)
 
 As mentioned in part 1, Appsody is one of the upstream open source projects included in [IBM Cloud Pak for Applications] (https://www.ibm.com/cloud/cloud-pak-for-applications) and is used through this series to expedite the creation and deployment of the microservices.
 
-At the end of the tutorial, you will have instrumented the existing microservices to work inside a Kubernetes cluster augmented with an Istio service mesh, generated some traffic through that microservices architecture, and used tools like Kiali and Jaeger to progressively drill into the state of the overall system:
+At the end of the tutorial, you will have instrumented the existing microservices to work inside a Kubernetes cluster augmented with an Istio service mesh, generated some traffic through that microservices architecture, and used tools like Grafana, Kiali and Jaeger to progressively drill into the state of the overall system:
 
 ![Tutorial overview](images/tutorial-overview-part-2.png)
 
@@ -142,23 +142,18 @@ Using a service mesh reflects a more common deployment topology for production e
 
 ## Step 1. Set up the local development environment
 
+If you completed the first part of the series, simply export the `tutorial_dir` environment variable:
 
-### Jaeger tracing options
+```sh
+export tutorial_dir=<same location where you started the first part of the series>
+```
 
-The first part of the tutorial defined a `jaeger.properties` file, following the properties documented in the [Client Library Features](https://www.jaegertracing.io/docs/latest/client-features/) page of the Jaeger website and you will need to define a few of those properties.
+If you skipped the first part of the series, clone this GitHub repository and export the `tutorial_dir` environment variable, entering the following command
 
-The difference in this portion of the tutorial is the usage of the full hostname of the  `jaeger-collector` service in `JAEGER_ENDPOINT` since the microservices will be running in a different Kubernetes namespace than the Jaeger server.
-
-Create a file for the Jaeger client properties, named `jaeger.properties`:
-
-```properties
-cat > jaeger.properties << EOF
-JAEGER_ENDPOINT=http://jaeger-collector.istio-system.svc.cluster.local:14268/api/traces
-JAEGER_REPORTER_LOG_SPANS=true
-JAEGER_SAMPLER_TYPE=const
-JAEGER_SAMPLER_PARAM=1
-JAEGER_PROPAGATION=b3
-EOF
+```sh
+git clone https://github.com/IBM/icpa-opentracing.git
+cd icpa-opentracing
+export tutorial_dir=$(PWD)
 ```
 
 
@@ -175,8 +170,8 @@ Assuming you will follow the recommendation of using minikube or the Kubernetes 
 IMPORTANT: [This Appsody issue](https://github.com/appsody/appsody-operator/issues/227) is currently blocking the usage of Istio 1.5 and above, so do not update the `ISTIO_VERSION` in the command below until that issue is fixed:
 
 ```
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.4.4 sh -
-cd istio-1.4*
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.5.0 sh -
+cd istio-1.5*
 export PATH="$PATH:$(PWD)/bin"
 
 istioctl verify-install
@@ -202,6 +197,8 @@ Detected that your cluster does not support third party JWT authentication. Fall
 ✔ Finished applying manifest for component EgressGateways.
 ✔ Finished applying manifest for component IngressGateways.
 ✔ Finished applying manifest for component AddonComponents.
+
+✔ Installation complete
 ```
 
 
@@ -213,10 +210,9 @@ The tutorial will create several resources in the target cluster and it is benef
 You will create a new namespace for this tutorial, named `tracing`, typing the following commands in a command-line terminal:
 
 ```sh
-kubectl get namespace tracing || \
-kubectl create namespace tracing
+kubectl get namespace cloudlab || \
+kubectl create namespace cloudlab
 ```
-
 
 
 ## Step 4. Create the Docker images for the microservices
@@ -270,7 +266,7 @@ This tutorial will have small and instructions for modifications to the file, bu
 [Create a ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#create-a-configmap) with the Jaeger configuration settings similar to the ones set in the `jaeger.properties` in the first part of this tutorial:
 
 ```sh
-cat <<EOF | kubectl apply -n tracing -f -
+cat <<EOF | kubectl apply -n cloudlab -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -283,10 +279,10 @@ data:
   JAEGER_SAMPLER_TYPE: const
 EOF
 
-kubectl get configmap jaeger-config -n tracing -o yaml
+kubectl get configmap jaeger-config -n cloudlab -o yaml
 ```
 
-Add the new ConfigMap to the application, inserting the `envFrom` snippet to the `spec` section of the `app-deploy.yaml` file for each application, as exemplified below:
+Add the new `ConfigMap` to the application, inserting the `envFrom` snippet to the `spec` section of the `app-deploy.yaml` file for each application, as exemplified below:
 
 ```yaml
 spec:
@@ -312,10 +308,11 @@ The second alternative is more approachable for this tutorial since it requires 
 Enabling automatic injection is described in the [Installing the Sidecar](https://istio.io/docs/setup/additional-setup/sidecar-injection/) section of the Istio documentation. The essential takeaway from that documentation is that you need to add the label `istio-injection=enabled` annotation to the namespace where you want automatic injection Istio sidecars, so type the following instructions in the command-line:
 
 ```sh
-kubectl label namespace tracing istio-injection=enabled
+kubectl label namespace cloudlab istio-injection=enabled
 ```
 
-You can verify the results of this 
+You can verify the results entering the following command:
+
 ```sh
 kubectl get namespace -L istio-injection
 ```
@@ -334,13 +331,13 @@ metadata:
 
 Notice how you could set the `sidecar.istio.io/inject` annotation to `"false"` to turn off the injection for an individual application even when automatic injection is enabled for the target namespace.
 
-Optionally, replace the `service.type` value from `NodePort` to `ClusterIP` in `app-deploy.yaml`. This will remove the external port for the microservice, which ensures no one accidentally bypasses the Istio traffic management.
+Optionally, replace the `service.type` value with `ClusterIP` in `app-deploy.yaml`. This change will remove the external port for the microservice, which ensures no one accidentally bypasses the Istio traffic management.
 
 
 
 ## Step 7. Labeling the workload
 
-Istio has several optional labels that can be quite useful to further categorize metrics, especially when visualizing the data from the Kiali console.
+Istio has a few labels that must be set in the deployment to instruct the service mesh about the name and version of the application.
 
 These labels are defined in the [Pods and Services](https://istio.io/docs/ops/deployment/requirements/) page of the Istio documentation. Add the following labels to the `app-deploy.yaml` file for the `nodejs-tracing` application:
 
@@ -354,15 +351,24 @@ metadata:
 ...
 ```
 
+The last required label is the [protocol selection](https://istio.io/docs/ops/configuration/traffic-management/protocol-selection/) field, classifying the traffic type as HTTP traffic:
+
+```yaml
+spec:
+  service:
+    ...
+    portName: http
+
+```
 
 
 ## Step 8. Deploy the microservices
 
 As a summary up to this point, you have made the following changes to your cluster and the deployment descriptor of each application:
 
-- Created a namespace (`tracing`) for deploying the applications
+- Created a namespace (`cloudlab`) for deploying the applications
 
-- Enabled that namespace for automatic Istio sidecar injection
+- Enabled that namespace for automatic injection of Istio sidecars
 
 - Created a `ConfigMap` resource containing the Jaeger endpoint information
 
@@ -375,25 +381,25 @@ With all those changes in place, and assuming the environment variable `tutorial
 ```sh
 cd "${tutorial_dir}"
 cd nodejs-tracing
-appsody deploy --namespace tracing
+appsody deploy --namespace cloudlab
 ```
 
 ```sh
 cd "${tutorial_dir}"
 cd springboot-tracing
-appsody deploy --namespace tracing
+appsody deploy --namespace cloudlab
 ```
 
 ```sh
 cd "${tutorial_dir}"
 cd jee-tracing
-appsody deploy --namespace tracing
+appsody deploy --namespace cloudlab
 ```
 
 In concrete terms for the actual deployment, the "sidecar injection" means Istio adds a proxy container to each pod running the microservices. This is a good point in the tutorial to take a look at the running containers before the injection. Type the following instruction in the command-line terminal:
 
 ```sh
-kubectl get pods -n tracing -l app.kubernetes.io/managed-by=appsody-operator
+kubectl get pods -n cloudlab -l app.kubernetes.io/managed-by=appsody-operator
 ```
 
 You should see output similar to the one below, with two containers inside each pod, which indicates the sidecar has been added:
@@ -423,15 +429,15 @@ Note that `kube-inject` command modifies the deployment descriptor directly in t
 You can type the following commands in three separate terminal windows to follow the console output of each application as you progress towards the rest of the tutorial:
 
 ```sh
-kubectl logs -n tracing -f -l app.kubernetes.io/name=nodejs-tracing --all-containers | grep -vi "live\|ready\|inbound\|metrics"
+kubectl logs -n cloudlab -f -l app.kubernetes.io/name=nodejs-tracing --all-containers | grep -vi "live\|ready\|inbound\|metrics"
 ```
 
 ```sh
-kubectl logs -n tracing -f -l app.kubernetes.io/name=springboot-tracing --all-containers | grep -vi "live\|ready\|inbound"
+kubectl logs -n cloudlab -f -l app.kubernetes.io/name=springboot-tracing --all-containers | grep -vi "live\|ready\|inbound"
 ```
 
 ```sh
-kubectl logs -n tracing -f -l app.kubernetes.io/name=jee-tracing --all-containers | grep -vi "live\|ready\|inbound"
+kubectl logs -n cloudlab -f -l app.kubernetes.io/name=jee-tracing --all-containers | grep -vi "live\|ready\|inbound"
 ```
 
 
@@ -441,11 +447,11 @@ As the final step before sending transactions into the Node.js microservice, you
 
 
 ```sh
-cat <<EOF | kubectl apply -n tracing -f -
+cat <<EOF | kubectl apply -n cloudlab -f -
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
-  name: tracing-tutorial-gateway
+  name: tutorial-gateway
 spec:
   selector:
     istio: ingressgateway # use istio default controller
@@ -460,27 +466,33 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: tracing-tutorialinfo
+  name: tutorial-service
 spec:
   hosts:
   - "*"
   gateways:
-  - tracing-tutorial-gateway
+  - tutorial-gateway
   http:
   - match:
     - uri:
-        exact: /node-springboot
-    - uri:
-        exact: /node-jee
+        prefix: "/quoteOrder"
+    rewrite:
+      uri: "/node-jee"
     route:
     - destination:
         host: nodejs-tracing
-        port:
-          number: 3000
+  - match:
+    - uri:
+        prefix: "/quoteItem"
+    rewrite:
+      uri: "/node-springboot"
+    route:
+    - destination:
+        host: nodejs-tracing
 EOF
 ```
 
-Note the presence of the `/node-springboot` and `/node-jee` virtual endpoints in the `VirtualService`, which map to the respective endpoints in the Node.js application.
+Note the remapping of the `/node-springboot` and `/node-jee` virtual endpoints to `/quoteItem` and `/quoteOrder`, respectivelly, in the `VirtualService`, illustrating how one can recombine microservices endpoints independently of how they were named in the original application.
 
 Now issue the following commands a few times:
 
@@ -493,8 +505,8 @@ You can also leave the commands running continuously with:
 
 ```sh
 while true; do
-  curl -s localhost/node-springboot; sleep 2
-  curl -s localhost/node-jee; sleep 2
+  curl -s localhost/quoteItem; sleep 2
+  curl -s localhost/quoteOrder; sleep 2
 done
 ```
 
@@ -516,7 +528,7 @@ istioctl dashboard grafana &
 
 Once the new tab for the Grafana UI shows up in your default browser, select the "Explore" button on the left navigation bar, you can inspect some of the Istio pre-packaged dashboards by clicking on the "Dashboards" menu in the left menu, then select "Manage".
 
-In the resulting "Manage" tab, click on the "istio" folder, then select "Istio Service Dashboard". Once the dashboard completes rendering, select "nodejs-tracing.tracing.svc.cluster.local" in the "Service" field and hit Enter. Depending on the traffic still being generated from previous sections, you should see a screen similar to the one below:
+In the resulting "Manage" tab, click on the "istio" folder, then select "Istio Service Dashboard". Once the dashboard completes rendering, select "nodejs-tracing.cloudlab.svc.cluster.local" in the "Service" field and hit Enter. Depending on the traffic still being generated from previous sections, you should see a screen similar to the one below:
 
 ![Traffic analysis in Istio Service Dashboard](/images/grafana-istio-service-dashboard.png)
 
@@ -527,7 +539,7 @@ As an exercise to give you some idea of how you would reference Istio service me
 
 
 ```
-avg by (destination_service_name, destination_version, response_code)(rate(istio_requests_total{destination_service_namespace="tracing"}[5m]))
+avg by (destination_service_name, destination_version, response_code)(rate(istio_requests_total{destination_service_namespace="cloudlab"}[5m]))
 ```
 
 This tutorial is not a primer on PromQL, but the breakdown of the query can be read as follows: _"average the rate of requests in the Istio mesh for each service grouped in 5-minute intervals and then group them by service name, service version, and HTTP response code"_.
@@ -543,7 +555,7 @@ Assuming you left that `while` loop running in the background, sending requests 
 Inject the failure by creating an Istio `VirtualService` for the `jee-tracing` microservice:
 
 ```sh
-cat <<EOF | kubectl apply -n tracing -f -
+cat <<EOF | kubectl apply -n cloudlab -f -
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
@@ -566,14 +578,14 @@ spec:
 EOF
 ```
 
-The pods will get restarted in a few moments, but the incoming requests should get disrupted by all the restarts, generating several HTTP response codes such as `404` (for services not found) and `503` (gateway unavailable).
+The change takes place immediately, generating HTTP `502` gateway errors in 70% of the calls incoming from the Node.js application.
 
 Hit the refresh button in the upper right corner of the Grafana UI and you should see some of the new errors in the graph.
 
 
 ### (optional) Grafana - Import dashboard
 
-As a final exercise, you can import and study the dashboard contained in the GitHub repository for this tutorial, located at (grafana/GrafanaTracingTutorialDashboard.json).
+As a final exercise for the Grafana dashboard, you can import and study the dashboard contained in the GitHub repository for this tutorial, located at (grafana/GrafanaTracingTutorialDashboard.json).
 
 Select "Dashboards" from the left menu again and click on the "Manage" button, then click on the "Import" button. In the "Import" panel, paste the contents of the file in the form and hit the "Load" button, which should display a dashboard similar to this:
 
@@ -619,14 +631,14 @@ Select "istio-mixer" in the "Service" menu and hit the "Find Traces" button, the
 
 ![Trace starting from Istio Ingress](/images/jaeger-istio-ingress.png)
 
-In this trace you can see the points where Istio has injected its traffic management into the business transactions, mediating inbound and inter-component traffic along the way.
+In this trace you can see the points where Istio injected its traffic management into the business transactions, mediating inbound and inter-component traffic along the way.
 
 As a last modification to the system, we can further exploit Istio's fault injection to introduce a delay on the responses from a microservice, which is useful to explore the overall system tolerance to slow responses in given component.
 
-Inject the failure by creating an Istio `VirtualService` for the `springboot-tracing` microservice:
+Inject the delays by creating an Istio `VirtualService` for the `springboot-tracing` microservice:
 
 ```sh
-cat <<EOF | kubectl apply -n tracing -f -
+cat <<EOF | kubectl apply -n cloudlab -f -
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
@@ -648,6 +660,7 @@ spec:
         host: springboot-tracing
 EOF
 ```
+
 
 
 

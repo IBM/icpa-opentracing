@@ -67,7 +67,7 @@ metadata:
     stack.appsody.dev/id: java-openliberty
     stack.appsody.dev/version: 0.2.3
   name: jee-tracing
-  namespace: tracing
+  namespace: cloudlab
 spec:
   applicationImage: dev.local/jee-tracing
   createKnativeService: false
@@ -94,6 +94,7 @@ spec:
     annotations:
       prometheus.io/scrape: "true"
     port: 9080
+    portName: http
     type: ClusterIP
   stack: java-openliberty
   version: 1.0.0

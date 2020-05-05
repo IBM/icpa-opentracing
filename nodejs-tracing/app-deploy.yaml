@@ -25,7 +25,7 @@ metadata:
     stack.appsody.dev/id: nodejs-express
     stack.appsody.dev/version: 0.4.2
   name: nodejs-tracing
-  namespace: default
+  namespace: cloudlab
 spec:
   applicationImage: dev.local/nodejs-tracing
   createKnativeService: false
@@ -56,7 +56,8 @@ spec:
       sidecar.istio.io/inject: "true"
       prometheus.io/scrape: "true"
     port: 3000
-    type: NodePort
+    portName: http
+    type: ClusterIP
   stack: nodejs-express
   version: 1.0.0
 status: {}

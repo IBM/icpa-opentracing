@@ -27,12 +27,12 @@ function getEntryPoint() {
 //
 const opentracing = require('opentracing')
 var initTracerFromEnv = require('jaeger-client').initTracerFromEnv
-const jaegerEndpoint = process.env.JAEGER_ENDPOINT || "http://jaeger-collector:14268/api/traces";
-const jaegerReporterLogSpans = process.env.JAEGER_REPORTER_LOG_SPANS || true;
-const jaegerSamplerType = process.env.JAEGER_SAMPLER_TYPE || "const";
-const jaegerSamplerParam = process.env.JAEGER_SAMPLER_PARAM || 1;
+const jaegerEndpoint = process.env.JAEGER_ENDPOINT || "http://jaeger-collector:14268/api/traces"
+const jaegerReporterLogSpans = process.env.JAEGER_REPORTER_LOG_SPANS || true
+const jaegerSamplerType = process.env.JAEGER_SAMPLER_TYPE || "const"
+const jaegerSamplerParam = process.env.JAEGER_SAMPLER_PARAM || 1
 
-var userAppJson = require(basePath + '/package.json');
+var userAppJson = require(basePath + '/package.json')
 var config = { 
   serviceName: userAppJson.name
 }
@@ -42,7 +42,7 @@ config.sampler = {
 config.reporter = { 
   logSpans: jaegerReporterLogSpans,
   collectorEndpoint: jaegerEndpoint 
-};
+}
 var options = {}
 var tracer = initTracerFromEnv(config, options)
 
@@ -51,9 +51,9 @@ if (jaegerEndpoint.includes("cluster")) {
   // using B3 headers for header propagation
   // https://github.com/openzipkin/b3-propagation
   const ZipkinB3TextMapCodec = require('jaeger-client').ZipkinB3TextMapCodec
-  let codec = new ZipkinB3TextMapCodec({ urlEncoding: true });
-  tracer.registerInjector(opentracing.FORMAT_HTTP_HEADERS, codec);
-  tracer.registerExtractor(opentracing.FORMAT_HTTP_HEADERS, codec);
+  let codec = new ZipkinB3TextMapCodec({ urlEncoding: true })
+  tracer.registerInjector(opentracing.FORMAT_HTTP_HEADERS, codec)
+  tracer.registerExtractor(opentracing.FORMAT_HTTP_HEADERS, codec)
 }
 
 opentracing.initGlobalTracer(tracer)
@@ -61,7 +61,7 @@ opentracing.initGlobalTracer(tracer)
 // From: https://ibm-cloud-architecture.github.io/learning-distributed-tracing-101/docs/lab-jaeger-nodejs.html
 function tracingMiddleWare(req, res, next) {
 
-  const tracer = opentracing.globalTracer();
+  const tracer = opentracing.globalTracer()
 
   const wireCtx = tracer.extract(opentracing.FORMAT_HTTP_HEADERS, req.headers)
   const span = tracer.startSpan(req.method + "-" + req.path, { childOf: wireCtx })

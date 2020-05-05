@@ -35,7 +35,10 @@ metadata:
     image.opencontainers.org/title: springboot-tracing
     stack.appsody.dev/id: java-spring-boot2
     stack.appsody.dev/version: 0.3.26
+    app: springboot-tracing
+    version: v1
   name: springboot-tracing
+  namespace: cloudlab
 spec:
   applicationImage: dnastacio/springboot-tracing
   createKnativeService: false
@@ -69,6 +72,7 @@ spec:
       prometheus.io/path: /actuator/prometheus
       prometheus.io/scrape: "true"
     port: 8080
+    portName: http
     type: ClusterIP
   stack: java-spring-boot2
   version: 1.0.0
