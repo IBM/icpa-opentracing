@@ -181,7 +181,7 @@ istioctl manifest apply \
   --set values.kiali.enabled=true
 ```
 
-The output shoud look similar to the one below:
+The output should look similar to the one below:
 
 ```
 Detected that your cluster does not support third party JWT authentication. Falling back to less secure first party JWT. See https://istio.io/docs/ops/best-practices/security/#configure-third-party-service-account-tokens for details.
@@ -327,7 +327,7 @@ metadata:
 ...
 ```
 
-Notice how you could set the `sidecar.istio.io/inject` annotation to `"false"` to turn off the injection for an individual application even when automatic injection is enabled for the target namespace.
+Notice how you could set the `sidecar.istio.io/inject` annotation to `"false"` to turn off the injection for an individual application even when the automatic injection is enabled for the target namespace.
 
 Optionally, replace the `service.type` value with `ClusterIP` in `app-deploy.yaml`. This change will remove the external port for the microservice, which ensures no one accidentally bypasses the Istio traffic management.
 
@@ -665,7 +665,7 @@ Search for the traces associated with the operation named "quoteItem" and notice
 
 ![Delayed calls from service "A" to service "B"](images/jaeger-trace-delayed-call.png)
 
-Another type of fault injection is the simulation of failures in the communication, which is also useful when trying to understand the system behavior during partial outages.
+Another type of fault injection is the simulation of failures in responses to requests to a service, which is also useful when trying to understand the system behavior during partial outages.
 
 Inject the failures in the `jee-tracing` microservice by creating this other  Istio `VirtualService` object in the namespace:
 
