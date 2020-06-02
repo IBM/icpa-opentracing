@@ -474,7 +474,7 @@ This tutorial is not a primer on PromQL, but the breakdown of the query can be r
 
 The resulting visualization in the following picture is a simple and effective way of observing the volume of requests that are split between successful and unsuccessful responses.
 
-![Screen capture of the average number of requests in the Istio service mesh, grouped by service and response code, in Grafana](/images/grafana-tracing-overview-light.png)
+![Screen capture of the average number of requests in the Istio service mesh, grouped by service and response code, in Grafana](/images/grafana-tracing-overview.png)
 
 If you do not see some of the response errors in the chart, which is expected since the sequence of steps in the tutorial waited until all microservices were up and running, you can simulate a system crash where all pods get restarted simultaneously.
 
@@ -516,7 +516,7 @@ As a final exercise for the Grafana dashboard, you can import and study the dash
 
 Select __Dashboards__ from the navigation menu again, click __Manage__, and then click __Import__. In the Import pane, paste the contents of the file in the form and click __Load__, which should display a dashboard that is similar to this screen capture:
 
-![Screen capture of the Grafana dashboard for metrics generated in this tutorial](images/grafana-mesh-dashboard-light.png)
+![Screen capture of the Grafana dashboard for metrics generated in this tutorial](images/grafana-mesh-dashboard.png)
 
 #### Use Kiali to view the microservices connections
 
